@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { User } from "@/types";
 import { updateUserPassword } from "@/lib/storage";
 import { 
@@ -28,6 +29,7 @@ export default function ChangePasswordModal({
   onClose,
   onSuccess,
 }: ChangePasswordModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [manv, setManv] = useState<string>(currentUser?.manv || "");
   const [oldPassword, setOldPassword] = useState<string>("");
   const [newPassword, setNewPassword] = useState<string>("");
@@ -41,14 +43,18 @@ export default function ChangePasswordModal({
   const [successMsg, setSuccessMsg] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Sync manv when currentUser changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (currentUser?.manv) {
       setManv(currentUser.manv);
     }
   }, [currentUser]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,8 +111,8 @@ export default function ChangePasswordModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto animate-in fade-in">
       <div 
         className="fixed inset-0" 
         onClick={onClose} 
@@ -279,6 +285,7 @@ export default function ChangePasswordModal({
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

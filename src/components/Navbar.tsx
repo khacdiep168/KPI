@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { User } from "@/types";
 import { logout } from "@/lib/storage";
 import { 
@@ -34,8 +35,13 @@ export default function Navbar({
   activeTab,
   onTabChange,
 }: NavbarProps) {
+  const [mounted, setMounted] = useState(false);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showChangePassModal, setShowChangePassModal] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -202,9 +208,9 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* User Profile Sheet Modal (Căn giữa chính xác giữa màn hình, không bị tràn hay che mất thông tin) */}
-      {showProfileSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+      {/* User Profile Sheet Modal (Dùng createPortal để gắn trực tiếp vào body, đè lên 100% trang web) */}
+      {mounted && showProfileSheet && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProfileSheet(false)} 
@@ -290,7 +296,8 @@ export default function Navbar({
               Đóng
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Mobile Fixed Bottom App Navigation Bar (Chuẩn Giao Diện App Di Động Hiện Đại) */}
