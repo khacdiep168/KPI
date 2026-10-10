@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   AlertCircle, 
   X,
-  ShieldCheck
+  ShieldCheck,
+  UserCheck
 } from "lucide-react";
 
 interface ChangePasswordModalProps {
@@ -105,66 +106,69 @@ export default function ChangePasswordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in">
       <div 
         className="fixed inset-0" 
         onClick={onClose} 
       />
 
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-5 sm:p-6 relative">
+      {/* Modal Container: Căn giữa chính xác giữa màn hình (my-auto) và giới hạn chiều cao tối đa không vượt màn hình */}
+      <div className="relative w-full max-w-sm sm:max-w-md my-auto bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200 max-h-[85dvh] flex flex-col">
+        {/* Modal Header: Tinh gọn, rõ ràng, không chiếm quá nhiều diện tích */}
+        <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-4 sm:p-5 shrink-0 relative">
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
+            className="absolute right-3.5 top-3.5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-600/30 text-blue-400 flex items-center justify-center border border-blue-400/30">
-              <KeyRound className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-blue-600/30 text-blue-400 flex items-center justify-center border border-blue-400/30 shrink-0">
+              <KeyRound className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-white">
+              <h2 className="text-base font-bold text-white leading-tight">
                 Đổi Mật Khẩu Cá Nhân
               </h2>
-              <p className="text-xs text-blue-200/80 mt-0.5">
-                Cập nhật mật khẩu để bảo mật tài khoản KPI của bạn
+              <p className="text-[11px] text-blue-200/80 mt-0.5">
+                Cập nhật mật khẩu để bảo mật tài khoản
               </p>
             </div>
           </div>
 
+          {/* Badge thông tin nhân viên: Rõ ràng, dễ đọc, không bao giờ bị che */}
           {currentUser && (
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-              <div className="text-slate-300">
-                Nhân viên: <strong className="text-white">{currentUser.name}</strong>
+            <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5 text-slate-200 min-w-0 truncate">
+                <UserCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="truncate">Nhân viên: <strong className="text-white">{currentUser.name}</strong></span>
               </div>
-              <span className="font-mono text-[11px] text-blue-300 bg-blue-950/80 px-2 py-0.5 rounded-md border border-blue-400/30">
+              <span className="font-mono text-[11px] font-bold text-blue-300 bg-blue-950/90 px-2 py-0.5 rounded-md border border-blue-400/30 shrink-0 ml-2">
                 [{currentUser.manv}]
               </span>
             </div>
           )}
         </div>
 
-        {/* Modal Body */}
-        <div className="p-5 sm:p-6 overflow-y-auto">
+        {/* Modal Body: Cuộn mượt mà nếu bàn phím ảo hiển thị */}
+        <div className="p-4 sm:p-5 overflow-y-auto flex-1">
           {errorMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+            <div className="mb-3.5 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{errorMsg}</span>
             </div>
           )}
 
           {successMsg && (
-            <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-medium">
+            <div className="mb-3.5 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-medium">
               <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
               <span>{successMsg}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {!currentUser && (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -176,7 +180,7 @@ export default function ChangePasswordModal({
                   value={manv}
                   onChange={(e) => setManv(e.target.value.toUpperCase())}
                   required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm uppercase text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm uppercase text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
               </div>
             )}
@@ -193,7 +197,7 @@ export default function ChangePasswordModal({
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
                 <button
                   type="button"
@@ -208,16 +212,16 @@ export default function ChangePasswordModal({
             {/* Mật khẩu mới */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Mật Khẩu Mới
+                Mật Khẩu Mới (Tối thiểu 4 ký tự)
               </label>
               <div className="relative">
                 <input
                   type={showNewPass ? "text" : "password"}
-                  placeholder="Nhập mật khẩu mới (tối thiểu 4 ký tự)..."
+                  placeholder="Nhập mật khẩu mới..."
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
                 <button
                   type="button"
@@ -241,7 +245,7 @@ export default function ChangePasswordModal({
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-200 text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
                 <button
                   type="button"
@@ -254,7 +258,7 @@ export default function ChangePasswordModal({
             </div>
 
             {/* Actions */}
-            <div className="pt-2 flex items-center gap-3">
+            <div className="pt-2 flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={onClose}

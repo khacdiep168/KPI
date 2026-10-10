@@ -202,15 +202,15 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* User Profile Sheet Modal (Căn giữa màn hình, an toàn với Dynamic Island & Notch trên điện thoại) */}
+      {/* User Profile Sheet Modal (Căn giữa chính xác giữa màn hình, không bị tràn hay che mất thông tin) */}
       {showProfileSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-16 pb-20 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProfileSheet(false)} 
           />
 
-          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 z-10 max-h-[80vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-sm sm:max-w-md my-auto bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 z-10 max-h-[85dvh] overflow-y-auto animate-in zoom-in-95 duration-200">
             {/* Header thông tin nhân viên */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3 min-w-0">
