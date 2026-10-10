@@ -15,8 +15,10 @@ import {
   Users2,
   ChevronDown,
   Sparkles,
-  BarChart3
+  BarChart3,
+  KeyRound
 } from "lucide-react";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 interface NavbarProps {
   currentUser: User;
@@ -32,6 +34,7 @@ export default function Navbar({
   onUserSwitch,
 }: NavbarProps) {
   const [showSwitchMenu, setShowSwitchMenu] = useState(false);
+  const [showChangePassModal, setShowChangePassModal] = useState(false);
   const allUsers = getUsers();
 
   const handleLogout = () => {
@@ -335,7 +338,18 @@ export default function Navbar({
                       </button>
                     </div>
 
-                    <div className="pt-2 px-2">
+                    <div className="pt-2 px-2 space-y-1">
+                      <button
+                        onClick={() => {
+                          setShowSwitchMenu(false);
+                          setShowChangePassModal(true);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg transition-colors"
+                      >
+                        <KeyRound className="w-3.5 h-3.5 text-blue-600" />
+                        Đổi mật khẩu cá nhân
+                      </button>
+
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
@@ -349,10 +363,19 @@ export default function Navbar({
               )}
             </div>
 
+            {/* Change Password icon */}
+            <button
+              onClick={() => setShowChangePassModal(true)}
+              className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="Đổi mật khẩu cá nhân"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+
             {/* Logout icon */}
             <button
               onClick={handleLogout}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
               title="Đăng xuất"
             >
               <LogOut className="w-4 h-4" />
@@ -464,6 +487,13 @@ export default function Navbar({
           )}
         </div>
       </nav>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        currentUser={currentUser}
+        isOpen={showChangePassModal}
+        onClose={() => setShowChangePassModal(false)}
+      />
     </header>
   );
 }

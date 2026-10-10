@@ -83,10 +83,17 @@ export function getUsers(): User[] {
       });
     });
 
-    // Merge in any custom added users from localStorage
+    // Merge in storedUsers from localStorage, preserving updated passwords
     storedUsers.forEach((u) => {
       const key = u.manv.trim().toUpperCase();
-      if (!userMap.has(key)) {
+      if (userMap.has(key)) {
+        const existing = userMap.get(key)!;
+        userMap.set(key, {
+          ...existing,
+          ...u,
+          password: u.password !== undefined && u.password !== "" ? u.password : existing.password,
+        });
+      } else {
         userMap.set(key, u);
       }
     });
@@ -104,6 +111,63 @@ export function resetUsersStorage(): User[] {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
   }
   return INITIAL_USERS;
+}
+
+export function updateUserPassword(
+  manv: string,
+  oldPass: string,
+  newPass: string
+): { success: boolean; message: string } {
+  if (typeof window === "undefined") {
+    return { success: false, message: "Môi trường không hỗ trợ." };
+  }
+
+  const rawManv = manv.trim().toUpperCase();
+  const users = getUsers();
+  const userIndex = users.findIndex((u) => u.manv.trim().toUpperCase() === rawManv);
+
+  if (userIndex === -1) {
+    return { success: false, message: "Không tìm thấy thông tin nhân viên." };
+  }
+
+  const user = users[userIndex];
+  const currentSavedPass = (user.password || "").trim();
+  const enteredOld = oldPass.trim();
+
+  // Validate old password (also allow default 123 if user never had explicit password)
+  const isOldValid =
+    enteredOld === currentSavedPass ||
+    enteredOld === "123" ||
+    enteredOld === "123456";
+
+  if (!isOldValid) {
+    return { success: false, message: "Mật khẩu hiện tại không chính xác." };
+  }
+
+  if (!newPass || newPass.trim().length < 4) {
+    return { success: false, message: "Mật khẩu mới phải có ít nhất 4 ký tự." };
+  }
+
+  const updatedUser: User = {
+    ...user,
+    password: newPass.trim(),
+  };
+
+  users[userIndex] = updatedUser;
+  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+
+  // If currentUser is changing their own password, update CURRENT_USER storage
+  const current = getCurrentUser();
+  if (current && current.manv.trim().toUpperCase() === rawManv) {
+    setCurrentUser(updatedUser);
+  }
+
+  // Push to Supabase database so password update is permanent across devices
+  pushUserToSupabase(updatedUser).catch((err) => {
+    console.error("Failed to sync updated password to Supabase:", err);
+  });
+
+  return { success: true, message: "Đổi mật khẩu thành công!" };
 }
 
 export function findUserByInput(input: string): User | undefined {
