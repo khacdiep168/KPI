@@ -69,11 +69,11 @@ export default function Navbar({
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-xs">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 gap-2">
+    <header className="fixed top-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs h-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-full">
+        <div className="flex items-center justify-between h-full gap-2">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
               <Building2 className="w-5 h-5" />
             </div>
@@ -155,22 +155,22 @@ export default function Navbar({
             </button>
           </nav>
 
-          {/* Right: User Profile & Actions (Luôn hiển thị rõ nét trên cả máy tính & điện thoại) */}
+          {/* Right: User Profile & Actions (Cố định góc trên bên phải, hiển thị 100% trên cả điện thoại & máy tính) */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Nút Đổi Mật Khẩu (Chìa khóa 🔑 rõ ràng) */}
+            {/* Nút Đổi Mật Khẩu (Chìa khóa 🔑 rõ ràng 100% trên điện thoại) */}
             <button
               onClick={() => setShowChangePassModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 shrink-0"
               title="Đổi mật khẩu cá nhân"
             >
               <KeyRound className="w-4 h-4 text-blue-600" />
-              <span className="hidden sm:inline">Đổi Mật Khẩu</span>
+              <span className="text-xs font-bold">Đổi MK</span>
             </button>
 
             {/* Nút Hồ Sơ Người Dùng / Avatar */}
             <button
               onClick={() => setShowProfileSheet(true)}
-              className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors text-left cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 p-1 sm:px-2.5 sm:py-1.5 rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors text-left cursor-pointer active:scale-95 shrink-0"
               title="Xem hồ sơ nhân viên"
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xs uppercase shadow-xs">
@@ -192,7 +192,7 @@ export default function Navbar({
             {/* Nút Đăng Xuất (Nổi bật màu đỏ) */}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-1 p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200/80 transition-colors cursor-pointer active:scale-95"
+              className="flex items-center gap-1 p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200/80 transition-colors cursor-pointer active:scale-95 shrink-0"
               title="Đăng xuất tài khoản"
             >
               <LogOut className="w-4 h-4" />
@@ -202,15 +202,15 @@ export default function Navbar({
         </div>
       </div>
 
-      {/* User Profile Sheet Modal (Mở khi bấm vào Avatar hoặc bấm tab 'Tài Khoản' ở thanh đáy) */}
+      {/* User Profile Sheet Modal (Căn giữa màn hình, an toàn với Dynamic Island & Notch trên điện thoại) */}
       {showProfileSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pt-16 pb-20 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProfileSheet(false)} 
           />
 
-          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 z-10 max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 z-10 max-h-[80vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             {/* Header thông tin nhân viên */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3 min-w-0">
