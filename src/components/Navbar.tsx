@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { User } from "@/types";
 import { logout } from "@/lib/storage";
+import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
 import { 
   Building2, 
   LogOut, 
@@ -38,9 +39,15 @@ export default function Navbar({
   const [mounted, setMounted] = useState(false);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showChangePassModal, setShowChangePassModal] = useState(false);
+  const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
 
   useEffect(() => {
     setMounted(true);
+    const handleConfigChange = () => {
+      setCompanyConfig(getCompanyConfig());
+    };
+    window.addEventListener("company-config-changed", handleConfigChange);
+    return () => window.removeEventListener("company-config-changed", handleConfigChange);
   }, []);
 
   const handleLogout = () => {
@@ -80,17 +87,29 @@ export default function Navbar({
         <div className="flex items-center justify-between h-full gap-2">
           {/* Logo & Brand */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <Building2 className="w-5 h-5" />
-            </div>
+            {companyConfig.logoUrl ? (
+              <img 
+                src={companyConfig.logoUrl} 
+                alt="Logo" 
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl object-contain border border-slate-200 bg-white p-1 shadow-xs" 
+              />
+            ) : (
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-sky-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                <Building2 className="w-5 h-5" />
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">TKV KPI</span>
+                <span className="font-bold text-base sm:text-lg text-slate-900 tracking-tight">
+                  {companyConfig.shortName || "THẾ KỶ VÀNG"}
+                </span>
                 <span className="px-1.5 py-0.5 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider bg-blue-100 text-blue-700 rounded-md">
-                  V2.0
+                  KPI
                 </span>
               </div>
-              <p className="text-xs text-slate-500 hidden md:block">Đánh giá hiệu quả công việc hàng tháng</p>
+              <p className="text-xs text-slate-500 hidden md:block truncate max-w-[260px]">
+                {companyConfig.companyName}
+              </p>
             </div>
           </div>
 

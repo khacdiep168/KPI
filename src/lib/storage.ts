@@ -5,6 +5,7 @@ import { INITIAL_USERS } from "@/data/users";
 import { INITIAL_EVALUATIONS } from "@/data/evaluations";
 import { calculateClassification } from "@/data/criteria";
 import { pushEvaluationToSupabase, pushUserToSupabase } from "./supabaseSync";
+import { getCompanyConfig } from "./companyConfig";
 import * as XLSX from "xlsx";
 
 const STORAGE_KEYS = {
@@ -684,32 +685,37 @@ export interface AnnualReportData {
 
 export function exportAnnualReportToExcel(params: AnnualReportData): void {
   const { employee, year, monthsData, summary } = params;
+  const config = getCompanyConfig();
 
-  const aoa: any[][] = [
-    ["TẬP ĐOÀN CÔNG NGHIỆP THAN - KHOÁNG SẢN VIỆT NAM (TKV)"],
-    ["CÔNG TY CỔ PHẦN VẬN TẢI VÀ ĐƯA ĐÓN THỢ MỎ"],
-    [],
-    [`BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC (KPI) NĂM ${year}`],
-    [`Kỳ đánh giá: Từ Kỳ 01/${year} đến Kỳ 12/${year}`],
-    [],
-    ["THÔNG TIN NHÂN SỰ ĐƯỢC ĐÁNH GIÁ:"],
-    ["Mã số nhân viên:", employee.manv, "Họ và tên:", employee.name],
-    ["Bộ phận / Phòng ban:", employee.dept, "Chức vụ / Vị trí:", employee.title],
-    [],
-    [
-      "Kỳ / Tháng",
-      "Mã Kỳ",
-      "Điểm Tự Chấm",
-      "Xếp Loại Tự Chấm",
-      "Điểm Quản Lý",
-      "Xếp Loại Quản Lý",
-      "Điểm Hội Đồng",
-      "Xếp Loại Hội Đồng",
-      "Điểm Chốt KPI",
-      "Xếp Loại Cuối",
-      "Ghi Chú / Ý Kiến Đánh Giá",
-    ],
-  ];
+  const aoa: any[][] = [];
+  if (config.parentOrg) {
+    aoa.push([config.parentOrg]);
+  }
+  aoa.push([config.companyName]);
+  if (config.address) {
+    aoa.push([config.address]);
+  }
+  aoa.push([]);
+  aoa.push([`BẢNG TỔNG HỢP KẾT QUẢ ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC (KPI) NĂM ${year}`]);
+  aoa.push([`Kỳ đánh giá: Từ Kỳ 01/${year} đến Kỳ 12/${year}`]);
+  aoa.push([]);
+  aoa.push(["THÔNG TIN NHÂN SỰ ĐƯỢC ĐÁNH GIÁ:"]);
+  aoa.push(["Mã số nhân viên:", employee.manv, "Họ và tên:", employee.name]);
+  aoa.push(["Bộ phận / Phòng ban:", employee.dept, "Chức vụ / Vị trí:", employee.title]);
+  aoa.push([]);
+  aoa.push([
+    "Kỳ / Tháng",
+    "Mã Kỳ",
+    "Điểm Tự Chấm",
+    "Xếp Loại Tự Chấm",
+    "Điểm Quản Lý",
+    "Xếp Loại Quản Lý",
+    "Điểm Hội Đồng",
+    "Xếp Loại Hội Đồng",
+    "Điểm Chốt KPI",
+    "Xếp Loại Cuối",
+    "Ghi Chú / Ý Kiến Đánh Giá",
+  ]);
 
   monthsData.forEach((m) => {
     aoa.push([
@@ -744,6 +750,16 @@ export function exportAnnualReportToExcel(params: AnnualReportData): void {
   ]);
 
   aoa.push([]);
+  aoa.push([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    `${config.signatureLocation || "Quảng Ninh"}, ngày ..... tháng ..... năm ${year}`,
+  ]);
   aoa.push([]);
   aoa.push([
     "NGƯỜI LAO ĐỘNG",

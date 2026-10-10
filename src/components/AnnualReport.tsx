@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { User, EvaluationRecord } from "@/types";
 import { 
   getUsers, 
@@ -10,6 +10,7 @@ import {
   exportAnnualReportToExcel,
   AnnualReportData
 } from "@/lib/storage";
+import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
 import { calculateClassification } from "@/data/criteria";
 import { getBadgeColor, getStatusBadge } from "@/lib/utils";
 import { 
@@ -35,6 +36,16 @@ interface AnnualReportProps {
 }
 
 export default function AnnualReport({ currentUser }: AnnualReportProps) {
+  const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      setCompanyConfig(getCompanyConfig());
+    };
+    window.addEventListener("company-config-changed", handleConfigChange);
+    return () => window.removeEventListener("company-config-changed", handleConfigChange);
+  }, []);
+
   const allUsers = getUsers();
   const allEvaluations = getEvaluations();
 
@@ -479,13 +490,29 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
         {/* Header Document (Standard Official Header for Print & Screen) */}
         <div className="border-b border-slate-200 pb-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-center sm:text-left">
-            <div>
-              <p className="text-xs uppercase font-extrabold tracking-wider text-slate-500">
-                TẬP ĐOÀN CÔNG NGHIỆP THAN - KHOÁNG SẢN VIỆT NAM (TKV)
-              </p>
-              <p className="text-sm font-bold text-slate-800">
-                CÔNG TY CỔ PHẦN VẬN TẢI VÀ ĐƯA ĐÓN THỢ MỎ
-              </p>
+            <div className="flex items-center gap-3">
+              {companyConfig.logoUrl && (
+                <img 
+                  src={companyConfig.logoUrl} 
+                  alt="Company Logo" 
+                  className="w-12 h-12 object-contain rounded-lg border border-slate-200 bg-white p-1 shrink-0"
+                />
+              )}
+              <div>
+                {companyConfig.parentOrg ? (
+                  <p className="text-xs uppercase font-extrabold tracking-wider text-slate-500">
+                    {companyConfig.parentOrg}
+                  </p>
+                ) : null}
+                <p className="text-sm font-bold text-slate-800 uppercase">
+                  {companyConfig.companyName}
+                </p>
+                {companyConfig.address && (
+                  <p className="text-[11px] text-slate-500">
+                    {companyConfig.address}
+                  </p>
+                )}
+              </div>
             </div>
             <div className="text-center sm:text-right w-full sm:w-auto">
               <p className="text-xs font-bold text-slate-700 uppercase">
@@ -826,7 +853,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
         {/* Signature Blocks for Print & Official PDF */}
         <div className="mt-12 pt-6 border-t border-slate-200">
           <div className="text-right text-xs text-slate-500 italic mb-4">
-            Quảng Ninh, ngày ..... tháng ..... năm {selectedYear}
+            {companyConfig.signatureLocation || companyConfig.address || "Quảng Ninh"}, ngày ..... tháng ..... năm {selectedYear}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center text-xs">
             <div>

@@ -3,15 +3,16 @@
 import React, { useState } from "react";
 import { User } from "@/types";
 import { setCurrentUser, findUserByInput } from "@/lib/storage";
+import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
 import { 
   Building2, 
   Lock, 
   ArrowRight, 
-  AlertCircle,
-  Eye,
-  EyeOff,
-  KeyRound,
-  ShieldCheck
+  AlertCircle, 
+  Eye, 
+  EyeOff, 
+  KeyRound, 
+  ShieldCheck 
 } from "lucide-react";
 import ChangePasswordModal from "./ChangePasswordModal";
 
@@ -20,6 +21,7 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
+  const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
   const [manv, setManv] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
@@ -60,14 +62,24 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
         {/* Brand Card */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-blue-950/40">
           <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center mx-auto text-white shadow-lg shadow-blue-500/30 mb-3">
-              <Building2 className="w-7 h-7" />
-            </div>
-            <h1 className="text-2xl font-black text-white tracking-tight">
-              TKV KPI SYSTEM
+            {companyConfig.logoUrl ? (
+              <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 p-2 mx-auto flex items-center justify-center shadow-lg shadow-blue-500/20 mb-3 overflow-hidden">
+                <img 
+                  src={companyConfig.logoUrl} 
+                  alt="Logo" 
+                  className="w-full h-full object-contain" 
+                />
+              </div>
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-sky-400 flex items-center justify-center mx-auto text-white shadow-lg shadow-blue-500/30 mb-3">
+                <Building2 className="w-7 h-7" />
+              </div>
+            )}
+            <h1 className="text-2xl font-black text-white tracking-tight uppercase">
+              {companyConfig.shortName || "THẾ KỶ VÀNG"} KPI
             </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Hệ thống đánh giá hiệu quả công việc hàng tháng
+              {companyConfig.companyName}
             </p>
           </div>
 
