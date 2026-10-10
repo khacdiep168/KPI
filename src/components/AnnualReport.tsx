@@ -25,7 +25,9 @@ import {
   Search,
   ChevronRight,
   Sparkles,
-  BarChart3
+  BarChart3,
+  LayoutGrid,
+  Table
 } from "lucide-react";
 
 interface AnnualReportProps {
@@ -81,6 +83,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
   }, [allEvaluations]);
 
   const [selectedYear, setSelectedYear] = useState<number>(2026);
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
   // Compile 12 months data for selected employee & year
   const annualData = useMemo(() => {
@@ -524,14 +527,146 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
           </div>
         </div>
 
-        {/* Mobile Swipe Notice */}
-        <div className="no-print sm:hidden mb-2 px-3 py-1.5 flex items-center justify-between text-[11px] text-blue-700 font-medium bg-blue-50 rounded-xl border border-blue-200">
-          <span>👉 Vuốt sang ngang để xem đủ 12 kỳ</span>
-          <span className="font-bold text-blue-800">12 Kỳ</span>
+        {/* View Mode Toggle (Mobile Friendly) */}
+        <div className="no-print flex flex-wrap items-center justify-between gap-3 mb-4 pt-2">
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setViewMode("cards")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "cards"
+                  ? "bg-white text-blue-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>📱 Dạng Thẻ (Dễ Xem)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                viewMode === "table"
+                  ? "bg-white text-blue-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <Table className="w-3.5 h-3.5" />
+              <span>📊 Dạng Bảng (12 Kỳ)</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-slate-500">
+            {viewMode === "cards" ? "Hiển thị 12 tháng dễ đọc trên điện thoại" : "Bảng 12 cột đầy đủ để in / xuất Excel"}
+          </span>
         </div>
 
-        {/* 12 Months Detailed Table */}
-        <div className="overflow-x-auto">
+        {/* 1. MOBILE CARDS VIEW (When viewMode === 'cards') */}
+        <div className={`no-print ${viewMode === "cards" ? "block" : "hidden"} mb-6`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {annualData.monthsData.map((m) => (
+              <div
+                key={m.month}
+                className={`rounded-2xl p-4 border transition-all ${
+                  m.hasData
+                    ? "bg-white border-slate-200 shadow-xs hover:border-blue-300"
+                    : "bg-slate-50/60 border-slate-200/60 opacity-75"
+                }`}
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-xl bg-blue-100/80 text-blue-800 font-black text-xs flex items-center justify-center">
+                      T{m.month < 10 ? `0${m.month}` : m.month}
+                    </span>
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900">
+                        Tháng {m.month < 10 ? `0${m.month}` : m.month}/{selectedYear}
+                      </h3>
+                      <p className="text-[10px] text-slate-400 font-mono">Kỳ: {m.period}</p>
+                    </div>
+                  </div>
+                  <div>
+                    {m.hasData ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        Đã Đánh Giá
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
+                        Chưa có phiếu
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {m.hasData ? (
+                  <div className="mt-3 space-y-2.5">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
+                        <p className="text-[10px] text-slate-400 font-semibold uppercase">Tự Chấm</p>
+                        <p className="text-base font-black text-slate-900 mt-0.5">
+                          {m.selfScore !== null ? `${m.selfScore}` : "--"}
+                        </p>
+                        {m.selfClass ? (
+                          <span className={`inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold border ${getBadgeColor(m.selfClass)}`}>
+                            {m.selfClass}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="bg-blue-50/50 rounded-xl p-2 border border-blue-100/60">
+                        <p className="text-[10px] text-blue-600 font-semibold uppercase">Quản Lý</p>
+                        <p className="text-base font-black text-blue-700 mt-0.5">
+                          {m.managerScore !== null ? `${m.managerScore}` : "--"}
+                        </p>
+                        {m.managerClass ? (
+                          <span className={`inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold border ${getBadgeColor(m.managerClass)}`}>
+                            {m.managerClass}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-slate-400">Chờ duyệt</span>
+                        )}
+                      </div>
+
+                      <div className="bg-indigo-50/70 rounded-xl p-2 border border-indigo-100">
+                        <p className="text-[10px] text-indigo-700 font-black uppercase">Chốt KPI</p>
+                        <p className="text-base font-black text-indigo-900 mt-0.5">
+                          {m.finalScore !== null ? `${m.finalScore}` : "--"}
+                        </p>
+                        {m.finalClass ? (
+                          <span className={`inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-black border ${getBadgeColor(m.finalClass)}`}>
+                            ★ {m.finalClass}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {m.feedback ? (
+                      <p className="text-[11px] text-slate-600 italic bg-slate-50 p-2 rounded-xl border border-slate-100 leading-snug">
+                        &ldquo;{m.feedback}&rdquo;
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="py-5 text-center text-xs text-slate-400 italic">
+                    Chưa thực hiện đánh giá cho kỳ này
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 2. TABLE VIEW (Shown when viewMode === 'table' OR when printing) */}
+        <div className={`${viewMode === "table" ? "block" : "hidden print:block"}`}>
+          {/* Mobile Swipe Notice */}
+          <div className="no-print sm:hidden mb-2 px-3 py-1.5 flex items-center justify-between text-[11px] text-blue-700 font-medium bg-blue-50 rounded-xl border border-blue-200">
+            <span>👉 Vuốt sang ngang để xem đủ 12 kỳ</span>
+            <span className="font-bold text-blue-800">12 Kỳ</span>
+          </div>
+
+          {/* 12 Months Detailed Table */}
+          <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100 text-slate-700 font-bold border-y border-slate-200">
@@ -686,6 +821,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
             </tbody>
           </table>
         </div>
+      </div>
 
         {/* Signature Blocks for Print & Official PDF */}
         <div className="mt-12 pt-6 border-t border-slate-200">

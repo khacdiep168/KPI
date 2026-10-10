@@ -359,74 +359,111 @@ export default function Navbar({
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation bar */}
-        <div className="md:hidden flex items-center space-x-1.5 pb-2.5 pt-1 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+      {/* Mobile Fixed Bottom App Navigation Bar (Chuẩn Giao Diện App Di Động Hiện Đại) */}
+      <nav aria-label="Mobile navigation" className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] px-2 pt-1 pb-3">
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {/* 1. Tự Đánh Giá */}
           <button
             onClick={() => onTabChange("evaluate")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
               activeTab === "evaluate"
-                ? "bg-blue-600 text-white font-bold"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "text-blue-600 font-bold"
+                : "text-slate-500 font-medium hover:text-slate-800"
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Tự Đánh Giá</span>
+            <div className={`p-1.5 rounded-xl transition-all ${
+              activeTab === "evaluate" 
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105" 
+                : "bg-slate-100 text-slate-600"
+            }`}>
+              <FileText className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] mt-1 tracking-tight">Đánh Giá</span>
           </button>
 
+          {/* 2. Lịch Sử Cá Nhân */}
           <button
             onClick={() => onTabChange("history")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
               activeTab === "history"
-                ? "bg-blue-600 text-white font-bold"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                ? "text-blue-600 font-bold"
+                : "text-slate-500 font-medium hover:text-slate-800"
             }`}
           >
-            <History className="w-3.5 h-3.5" />
-            <span>Lịch Sử</span>
+            <div className={`p-1.5 rounded-xl transition-all ${
+              activeTab === "history" 
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105" 
+                : "bg-slate-100 text-slate-600"
+            }`}>
+              <History className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] mt-1 tracking-tight">Lịch Sử</span>
           </button>
 
+          {/* 3. Báo Cáo Năm (12 Kỳ) */}
+          <button
+            onClick={() => onTabChange("annual-report")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
+              activeTab === "annual-report"
+                ? "text-blue-600 font-bold"
+                : "text-slate-500 font-medium hover:text-slate-800"
+            }`}
+          >
+            <div className={`p-1.5 rounded-xl transition-all ${
+              activeTab === "annual-report" 
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105" 
+                : "bg-slate-100 text-slate-600"
+            }`}>
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <span className="text-[10px] mt-1 tracking-tight">Báo Cáo Năm</span>
+          </button>
+
+          {/* 4. Duyệt Bộ Phận (chỉ Quản lý / Admin) */}
           {(currentUser.role === "Manager" || currentUser.role === "Admin" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"))) && (
             <button
               onClick={() => onTabChange("manager")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
                 activeTab === "manager"
-                  ? "bg-blue-600 text-white font-bold"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "text-blue-600 font-bold"
+                  : "text-slate-500 font-medium hover:text-slate-800"
               }`}
             >
-              <Users2 className="w-3.5 h-3.5" />
-              <span>Duyệt Bộ Phận</span>
+              <div className={`p-1.5 rounded-xl transition-all ${
+                activeTab === "manager" 
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 scale-105" 
+                  : "bg-slate-100 text-slate-600"
+              }`}>
+                <Users2 className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] mt-1 tracking-tight">Duyệt KPI</span>
             </button>
           )}
 
+          {/* 5. Hội Đồng & Quản Trị (chỉ Admin) */}
           {currentUser.role === "Admin" && (
             <button
               onClick={() => onTabChange("admin")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
+              className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
                 activeTab === "admin"
-                  ? "bg-purple-600 text-white font-bold"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "text-purple-600 font-bold"
+                  : "text-slate-500 font-medium hover:text-slate-800"
               }`}
             >
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Hội Đồng & Báo Cáo</span>
+              <div className={`p-1.5 rounded-xl transition-all ${
+                activeTab === "admin" 
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-500/30 scale-105" 
+                  : "bg-slate-100 text-slate-600"
+              }`}>
+                <LayoutDashboard className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] mt-1 tracking-tight">Hội Đồng</span>
             </button>
           )}
-
-          <button
-            onClick={() => onTabChange("annual-report")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
-              activeTab === "annual-report"
-                ? "bg-blue-600 text-white font-bold ring-2 ring-blue-400"
-                : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            <span>Báo Cáo Năm (12 Kỳ)</span>
-          </button>
         </div>
-      </div>
+      </nav>
     </header>
   );
 }

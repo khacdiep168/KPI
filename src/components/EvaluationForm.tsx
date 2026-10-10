@@ -277,7 +277,7 @@ export default function EvaluationForm({
                 <select
                   value={targetManv}
                   onChange={(e) => setTargetManv(e.target.value)}
-                  className="mt-0.5 w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-2.5 py-1 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="mt-1 w-full bg-slate-900 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs sm:text-sm font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
                 >
                   <option value={currentUser.manv}>
                     👤 Bản thân: {currentUser.name} ({currentUser.manv}) {evaluatedManvs.has(currentUser.manv) ? " - [✓ Đã đánh giá]" : " - [⏳ Chưa đánh giá]"}
@@ -335,18 +335,29 @@ export default function EvaluationForm({
       )}
 
       {/* Sticky Realtime Score Bar */}
-      <div className="sticky top-16 z-30 mb-8 bg-white/95 backdrop-blur-md rounded-2xl p-4 border border-slate-200/90 shadow-lg shadow-slate-200/50">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="sticky top-14 sm:top-16 z-30 mb-6 bg-white/95 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-slate-200/90 shadow-lg shadow-slate-200/40">
+        <div className="flex items-center justify-between gap-2 sm:gap-4">
           {/* Progress */}
-          <div className="flex items-center gap-3 min-w-[200px]">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-              {answeredCount}/{KPI_CRITERIA.length}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs transition-colors ${
+              answeredCount === KPI_CRITERIA.length 
+                ? "bg-emerald-600 text-white" 
+                : "bg-blue-50 text-blue-700 border border-blue-200/60"
+            }`}>
+              {answeredCount === KPI_CRITERIA.length ? "✓" : `${answeredCount}/10`}
             </div>
             <div>
-              <p className="text-xs font-semibold text-slate-500">Tiến độ hoàn thành</p>
-              <div className="w-28 sm:w-36 h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[11px] sm:text-xs font-bold text-slate-700">
+                  {answeredCount === KPI_CRITERIA.length ? "Đã xong 10/10" : `Đã làm ${answeredCount}/10`}
+                </p>
+                <span className="text-[10px] text-slate-400 hidden sm:inline">tiêu chí</span>
+              </div>
+              <div className="w-20 sm:w-36 h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
                 <div 
-                  className="h-full bg-blue-600 rounded-full transition-all duration-300" 
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    answeredCount === KPI_CRITERIA.length ? "bg-emerald-500" : "bg-blue-600"
+                  }`}
                   style={{ width: `${(answeredCount / KPI_CRITERIA.length) * 100}%` }}
                 />
               </div>
@@ -354,17 +365,17 @@ export default function EvaluationForm({
           </div>
 
           {/* Realtime Score & Classification */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="text-right">
-              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tổng điểm dự kiến</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-slate-900 tracking-tight">{totalScore}</span>
-                <span className="text-xs text-slate-400">/ 100 điểm</span>
+              <p className="text-[10px] sm:text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tổng điểm</p>
+              <div className="flex items-baseline justify-end gap-0.5 sm:gap-1">
+                <span className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">{totalScore}</span>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-semibold">/100đ</span>
               </div>
             </div>
 
-            <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold ring-1 ${getBadgeColor(classification)}`}>
-              Xếp loại: {classification}
+            <div className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-black ring-1 ${getBadgeColor(classification)}`}>
+              {classification}
             </div>
           </div>
 
@@ -372,11 +383,11 @@ export default function EvaluationForm({
           <button
             onClick={handleSubmit}
             disabled={answeredCount < KPI_CRITERIA.length || submitting || isLocked}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md ${
+            className={`hidden sm:flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shrink-0 ${
               isLocked
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
                 : answeredCount === KPI_CRITERIA.length && !submitting
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
+                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25 cursor-pointer hover:scale-[1.02] active:scale-95"
                 : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
             }`}
           >
@@ -385,12 +396,12 @@ export default function EvaluationForm({
             ) : isLocked ? (
               <>
                 <Lock className="w-3.5 h-3.5" />
-                <span>Đã Hoàn Tất Đánh Giá</span>
+                <span>Đã Nộp</span>
               </>
             ) : (
               <>
                 <Send className="w-3.5 h-3.5" />
-                <span>Nộp Phiếu Đánh Giá</span>
+                <span>Nộp Phiếu</span>
               </>
             )}
           </button>
@@ -398,7 +409,7 @@ export default function EvaluationForm({
       </div>
 
       {/* The 10 Criteria Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {KPI_CRITERIA.map((criteria) => {
           const currentScore = scores[criteria.id];
           const isAnswered = currentScore !== undefined;
@@ -406,22 +417,24 @@ export default function EvaluationForm({
           return (
             <div
               key={criteria.id}
-              className={`rounded-2xl p-5 sm:p-6 transition-all duration-200 border ${
+              className={`rounded-2xl p-4 sm:p-6 transition-all duration-200 border ${
                 isAnswered
-                  ? "bg-white border-blue-200 shadow-xs"
+                  ? "bg-white border-blue-200 shadow-sm"
                   : "bg-white border-slate-200 shadow-xs hover:border-slate-300"
               }`}
             >
               {/* Question Header */}
-              <div className="flex items-start justify-between gap-4 mb-3">
-                <div className="flex items-start gap-3">
-                  <span className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
-                    isAnswered ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600"
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start gap-2.5 sm:gap-3">
+                  <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 mt-0.5 transition-all ${
+                    isAnswered 
+                      ? "bg-emerald-600 text-white shadow-xs" 
+                      : "bg-slate-100 text-slate-700 font-bold"
                   }`}>
-                    {criteria.number}
+                    {isAnswered ? "✓" : criteria.number}
                   </span>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                    <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 leading-snug">
                       {criteria.title}
                     </h2>
                     <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
@@ -430,14 +443,14 @@ export default function EvaluationForm({
                   </div>
                 </div>
 
-                <div className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-xs font-semibold">
-                  <span>Tối đa:</span>
+                <div className="shrink-0 flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[11px] sm:text-xs font-semibold">
+                  <span className="hidden sm:inline">Tối đa:</span>
                   <span className="font-bold text-slate-900">{criteria.maxScore}đ</span>
                 </div>
               </div>
 
               {/* Options Grid */}
-              <div className="mt-4 grid grid-cols-1 gap-2.5">
+              <div className="mt-3.5 grid grid-cols-1 gap-2.5">
                 {criteria.options.map((option, idx) => {
                   const isSelected = option.range 
                     ? option.range.includes(currentScore)
@@ -451,14 +464,14 @@ export default function EvaluationForm({
                       role="radio"
                       aria-checked={isSelected}
                       onClick={() => handleCardClick(criteria.id, option)}
-                      className={`relative flex flex-col p-3.5 rounded-xl border text-xs sm:text-sm transition-all ${
+                      className={`relative flex flex-col p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm transition-all touch-manipulation select-none ${
                         isLocked
                           ? "cursor-default opacity-85"
-                          : "cursor-pointer"
+                          : "cursor-pointer active:scale-[0.99]"
                       } ${
                         isSelected
-                          ? "bg-blue-50/80 border-blue-500 ring-1 ring-blue-500 shadow-xs"
-                          : "bg-slate-50/50 hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/30 shadow-xs"
+                          : "bg-slate-50/60 hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
                       }`}
                     >
                       <div className="flex items-start gap-3 w-full">
@@ -472,22 +485,22 @@ export default function EvaluationForm({
                         </div>
 
                         <div className="flex-1 min-w-0">
-                          <span className={`leading-relaxed ${isSelected ? "font-semibold text-blue-950" : "text-slate-700"}`}>
+                          <span className={`leading-relaxed text-xs sm:text-sm ${isSelected ? "font-bold text-blue-950" : "text-slate-700"}`}>
                             {option.text}
                           </span>
                         </div>
 
                         {/* Points pill badge */}
-                        <span className={`shrink-0 px-2 py-0.5 rounded-md text-xs font-bold ${
+                        <span className={`shrink-0 px-2 py-0.5 rounded-lg text-xs font-bold ${
                           isSelected
                             ? "bg-blue-600 text-white shadow-xs"
                             : "bg-slate-200/80 text-slate-700"
                         }`}>
                           {isSelected 
-                            ? `+${currentScore} đ` 
+                            ? `+${currentScore}đ` 
                             : hasRange && option.range
-                            ? `${option.range[0]} - ${option.range[option.range.length - 1]} đ`
-                            : `+${option.points} đ`}
+                            ? `${option.range[0]} - ${option.range[option.range.length - 1]}đ`
+                            : `+${option.points}đ`}
                         </span>
                       </div>
 
@@ -501,9 +514,9 @@ export default function EvaluationForm({
                         >
                           <div className="flex items-center gap-2">
                             <span className={`text-xs ${isSelected ? "font-bold text-blue-950" : "text-slate-500"}`}>
-                              {isSelected ? "👉 Chọn mức điểm cụ thể:" : "Mức điểm:"}
+                              {isSelected ? "👉 Chọn mức điểm:" : "Mức điểm:"}
                             </span>
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
                               {option.range.map((pt) => {
                                 const isPointActive = currentScore === pt;
                                 return (
@@ -516,8 +529,8 @@ export default function EvaluationForm({
                                       e.stopPropagation();
                                       handleSelectOption(criteria.id, pt);
                                     }}
-                                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                                      isLocked ? "cursor-default" : "cursor-pointer"
+                                    className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all touch-manipulation ${
+                                      isLocked ? "cursor-default" : "cursor-pointer active:scale-95"
                                     } ${
                                       isPointActive
                                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300 scale-105"
