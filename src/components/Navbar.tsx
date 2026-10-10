@@ -204,13 +204,13 @@ export default function Navbar({
 
       {/* User Profile Sheet Modal (Mở khi bấm vào Avatar hoặc bấm tab 'Tài Khoản' ở thanh đáy) */}
       {showProfileSheet && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div 
             className="fixed inset-0" 
             onClick={() => setShowProfileSheet(false)} 
           />
 
-          <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl border border-slate-100 z-10 animate-in slide-in-from-bottom duration-200">
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-100 z-10 max-h-[85vh] overflow-y-auto animate-in zoom-in-95 duration-200">
             {/* Header thông tin nhân viên */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3 min-w-0">
@@ -231,6 +231,7 @@ export default function Navbar({
               </div>
 
               <button 
+                type="button"
                 onClick={() => setShowProfileSheet(false)}
                 className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors shrink-0"
               >
@@ -239,17 +240,18 @@ export default function Navbar({
             </div>
 
             {/* Các nút bấm thao tác lớn dành cho nhân viên trên điện thoại */}
-            <div className="py-5 space-y-3">
+            <div className="py-4 space-y-3">
               {/* Nút Đổi mật khẩu cá nhân */}
               <button
+                type="button"
                 onClick={() => {
                   setShowProfileSheet(false);
                   setShowChangePassModal(true);
                 }}
-                className="w-full p-4 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                className="w-full p-3.5 sm:p-4 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
                     <KeyRound className="w-5 h-5" />
                   </div>
                   <div className="text-left">
@@ -262,11 +264,12 @@ export default function Navbar({
 
               {/* Nút Đăng xuất tài khoản */}
               <button
+                type="button"
                 onClick={handleLogout}
-                className="w-full p-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                className="w-full p-3.5 sm:p-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
                     <LogOut className="w-5 h-5" />
                   </div>
                   <div className="text-left">
@@ -280,8 +283,9 @@ export default function Navbar({
 
             {/* Nút Đóng */}
             <button
+              type="button"
               onClick={() => setShowProfileSheet(false)}
-              className="w-full py-3 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
+              className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 transition-colors"
             >
               Đóng
             </button>

@@ -111,7 +111,7 @@ export default function ChangePasswordModal({
         onClick={onClose} 
       />
 
-      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-10 animate-in zoom-in-95 duration-200 max-h-[90vh] flex flex-col">
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white p-5 sm:p-6 relative">
           <button
@@ -149,7 +149,7 @@ export default function ChangePasswordModal({
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 sm:p-6">
+        <div className="p-5 sm:p-6 overflow-y-auto">
           {errorMsg && (
             <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
