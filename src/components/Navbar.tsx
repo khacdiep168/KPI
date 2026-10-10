@@ -361,51 +361,70 @@ export default function Navbar({
         </div>
 
         {/* Mobile Navigation bar */}
-        <div className="md:hidden flex items-center space-x-1 pb-3 overflow-x-auto scrollbar-none">
+        <div className="md:hidden flex items-center space-x-1.5 pb-2.5 pt-1 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
           <button
             onClick={() => onTabChange("evaluate")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
               activeTab === "evaluate"
-                ? "bg-blue-600 text-white font-semibold"
-                : "bg-slate-100 text-slate-600"
+                ? "bg-blue-600 text-white font-bold"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            Tự Đánh Giá
+            <FileText className="w-3.5 h-3.5" />
+            <span>Tự Đánh Giá</span>
           </button>
+
           <button
             onClick={() => onTabChange("history")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
               activeTab === "history"
-                ? "bg-blue-600 text-white font-semibold"
-                : "bg-slate-100 text-slate-600"
+                ? "bg-blue-600 text-white font-bold"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
-            Lịch Sử
+            <History className="w-3.5 h-3.5" />
+            <span>Lịch Sử</span>
           </button>
+
           {(currentUser.role === "Manager" || currentUser.role === "Admin" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"))) && (
             <button
               onClick={() => onTabChange("manager")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
                 activeTab === "manager"
-                  ? "bg-blue-600 text-white font-semibold"
-                  : "bg-slate-100 text-slate-600"
+                  ? "bg-blue-600 text-white font-bold"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              Duyệt Bộ Phận
+              <Users2 className="w-3.5 h-3.5" />
+              <span>Duyệt Bộ Phận</span>
             </button>
           )}
+
           {currentUser.role === "Admin" && (
             <button
               onClick={() => onTabChange("admin")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
                 activeTab === "admin"
-                  ? "bg-purple-600 text-white font-semibold"
-                  : "bg-slate-100 text-slate-600"
+                  ? "bg-purple-600 text-white font-bold"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
-              Hội Đồng & Báo Cáo
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Hội Đồng & Báo Cáo</span>
             </button>
           )}
+
+          <button
+            onClick={() => onTabChange("annual-report")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all shadow-xs ${
+              activeTab === "annual-report"
+                ? "bg-blue-600 text-white font-bold ring-2 ring-blue-400"
+                : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            <span>Báo Cáo Năm (12 Kỳ)</span>
+          </button>
         </div>
       </div>
     </header>

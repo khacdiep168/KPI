@@ -276,10 +276,10 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
           <button
             onClick={handleExportExcel}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs"
             title="Xuất bảng báo cáo năm sang file Excel (.xlsx) chuẩn"
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -288,7 +288,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
 
           <button
             onClick={handlePrintPDF}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-xs"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors shadow-xs"
             title="In hoặc lưu thành file PDF chuẩn khổ giấy A4"
           >
             <Printer className="w-4 h-4" />
@@ -298,10 +298,10 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
       </div>
 
       {/* Filter Selector Bar (Hidden when printing) */}
-      <div className="no-print bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-wrap items-center gap-4">
+      <div className="no-print bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center gap-4">
         {/* Employee Selector */}
         {viewableUsers.length > 1 ? (
-          <div className="flex-1 min-w-[280px]">
+          <div className="flex-1 w-full">
             <label className="block text-xs font-semibold text-slate-600 mb-1">
               Chọn nhân viên xem báo cáo:
             </label>
@@ -320,7 +320,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
             </div>
           </div>
         ) : (
-          <div className="flex-1 min-w-[240px]">
+          <div className="flex-1 w-full">
             <span className="block text-xs font-semibold text-slate-600 mb-1">Nhân viên:</span>
             <div className="px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-100 rounded-xl">
               [{selectedUser.manv}] {selectedUser.name} — {selectedUser.dept}
@@ -329,7 +329,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
         )}
 
         {/* Year Selector */}
-        <div className="w-44">
+        <div className="w-full sm:w-44">
           <label className="block text-xs font-semibold text-slate-600 mb-1">
             Năm đánh giá:
           </label>
@@ -472,7 +472,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
       </div>
 
       {/* Printable Report Document (Used for both Screen and PDF Print) */}
-      <div className="printable-report bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6 sm:p-8">
+      <div className="printable-report bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-4 sm:p-8">
         {/* Header Document (Standard Official Header for Print & Screen) */}
         <div className="border-b border-slate-200 pb-6 mb-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-center sm:text-left">
@@ -522,6 +522,12 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
               <span className="font-bold text-slate-900">{selectedUser.title || "Nhân viên"}</span>
             </div>
           </div>
+        </div>
+
+        {/* Mobile Swipe Notice */}
+        <div className="no-print sm:hidden mb-2 px-3 py-1.5 flex items-center justify-between text-[11px] text-blue-700 font-medium bg-blue-50 rounded-xl border border-blue-200">
+          <span>👉 Vuốt sang ngang để xem đủ 12 kỳ</span>
+          <span className="font-bold text-blue-800">12 Kỳ</span>
         </div>
 
         {/* 12 Months Detailed Table */}
@@ -686,7 +692,7 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
           <div className="text-right text-xs text-slate-500 italic mb-4">
             Quảng Ninh, ngày ..... tháng ..... năm {selectedYear}
           </div>
-          <div className="grid grid-cols-3 gap-6 text-center text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center text-xs">
             <div>
               <p className="font-bold text-slate-900 uppercase">NGƯỜI LAO ĐỘNG</p>
               <p className="text-[11px] text-slate-500 italic mt-0.5">(Ký, ghi rõ họ tên)</p>

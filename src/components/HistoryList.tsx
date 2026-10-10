@@ -67,7 +67,7 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               const fname = `Lich_Su_KPI_${currentUser.manv}_${selectedPeriod !== "ALL" ? selectedPeriod : "Tat_Ca"}.xlsx`;
