@@ -70,6 +70,7 @@ export default function UserManagementModal({
   const isAdmin = currentUser.role === "Admin";
   const managedScope = getManagedDepartments(currentUser);
   const allDepts = getDepartments();
+  const permittedDepts = managedScope === "ALL" ? allDepts : managedScope;
 
   const loadUsers = () => {
     const list = getUsers();
@@ -321,7 +322,7 @@ export default function UserManagementModal({
               className="px-3 py-2 text-xs rounded-xl border border-slate-300 bg-white font-medium text-slate-700 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">Tất cả bộ phận ({accessibleUsers.length})</option>
-              {allDepts.map((d) => (
+              {permittedDepts.map((d) => (
                 <option key={d} value={d}>
                   {d}
                 </option>

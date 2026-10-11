@@ -417,9 +417,14 @@ export function getManagedDepartments(user: User): string[] | "ALL" {
   const deptNorm = (user.dept || "").toUpperCase();
   const manvNorm = (user.manv || "").toUpperCase();
 
-  // Quản lý Kinh doanh thì thấy bộ phận kho, chmt, kinh doanh
-  if (deptNorm.includes("KINH DOANH") || manvNorm === "KD01" || manvNorm === "TKV12") {
-    return ["KHO", "CHMT", "PHÒNG KINH DOANH"];
+  // Quản lý Kinh doanh thì thấy bộ phận Kho, CHMT, Kinh doanh, Xuất nhập khẩu
+  if (
+    deptNorm.includes("KINH DOANH") || 
+    manvNorm === "KD01" || 
+    manvNorm === "TKV12" || 
+    manvNorm === "TKV27"
+  ) {
+    return ["KHO", "CHMT", "PHÒNG KINH DOANH", "XUẤT NHẬP KHẨU"];
   }
 
   // Quản lý DTK thì thấy nhân viên của DTK
@@ -459,7 +464,7 @@ export function getVisibleColleaguesForEvaluation(currentUser: User): User[] {
     }
     const normalizedScope = scope.map((d) => d.trim().toUpperCase());
     return activeUsers.filter(
-      (u) => u.manv !== currentUser.manv && normalizedScope.includes(u.dept.trim().toUpperCase())
+      (u) => u.manv !== currentUser.manv && normalizedScope.includes((u.dept || "").trim().toUpperCase())
     );
   }
 

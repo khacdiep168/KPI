@@ -68,7 +68,7 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
       }
     }
     // 2. Selected Dept filter
-    if (selectedDept !== "ALL" && item.targetDept !== selectedDept) {
+    if (selectedDept !== "ALL" && (item.targetDept || "").trim().toUpperCase() !== selectedDept.trim().toUpperCase()) {
       return false;
     }
     // 3. Status filter

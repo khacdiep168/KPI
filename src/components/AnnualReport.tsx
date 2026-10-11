@@ -61,8 +61,10 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
       return allUsers;
     }
     if (currentUser.role === "Manager" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"))) {
+      if (managedDepts === "ALL") return allUsers;
+      const normalizedDepts = managedDepts.map((d) => d.trim().toUpperCase());
       return allUsers.filter(
-        (u) => u.manv === currentUser.manv || managedDepts.includes(u.dept)
+        (u) => u.manv === currentUser.manv || normalizedDepts.includes((u.dept || "").trim().toUpperCase())
       );
     }
     // Regular employee can view themselves
