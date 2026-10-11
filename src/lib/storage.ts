@@ -133,11 +133,12 @@ export function updateUserPassword(
   const currentSavedPass = (user.password || "").trim();
   const enteredOld = oldPass.trim();
 
-  // Validate old password (also allow default 123 if user never had explicit password)
-  const isOldValid =
-    enteredOld === currentSavedPass ||
-    enteredOld === "123" ||
-    enteredOld === "123456";
+  // Validate old password:
+  // Nếu tài khoản đã có mật khẩu: BẮT BUỘC phải nhập đúng mật khẩu hiện tại
+  // Nếu tài khoản chưa từng có mật khẩu: Mới cho phép mật khẩu mặc định 123 hoặc 123456
+  const isOldValid = currentSavedPass
+    ? enteredOld === currentSavedPass
+    : (enteredOld === "123" || enteredOld === "123456");
 
   if (!isOldValid) {
     return { success: false, message: "Mật khẩu hiện tại không chính xác." };

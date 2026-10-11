@@ -39,13 +39,14 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       return;
     }
 
-    // Flexible password check: user's password OR default 123 / 123456
+    // Kiểm tra mật khẩu:
+    // Nếu tài khoản đã có mật khẩu (từ CSDL/hệ thống): BẮT BUỘC phải khớp chính xác mật khẩu đó.
+    // Chỉ khi tài khoản hoàn toàn chưa có trường mật khẩu thì mới cho phép mật khẩu mặc định 123 / 123456.
     const enteredPass = password.trim();
     const targetPass = (user.password || "").trim();
-    const isMatch = 
-      enteredPass === targetPass || 
-      enteredPass === "123" || 
-      enteredPass === "123456";
+    const isMatch = targetPass
+      ? enteredPass === targetPass
+      : (enteredPass === "123" || enteredPass === "123456");
 
     if (!isMatch) {
       setErrorMsg("Mật khẩu không chính xác. Vui lòng thử lại.");
