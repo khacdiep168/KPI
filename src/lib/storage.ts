@@ -232,7 +232,19 @@ export function getEvaluations(): EvaluationRecord[] {
     return INITIAL_EVALUATIONS;
   }
   try {
-    const stored: EvaluationRecord[] = JSON.parse(data);
+    let stored: EvaluationRecord[] = JSON.parse(data);
+    
+    // Purge old mock records for 10-2026
+    const hasOldMock10 = stored.some(
+      (e) => e.period === "10-2026" && (e.id.match(/^eval-\d+$/) || e.id.startsWith("eval-1791701946589"))
+    );
+    if (hasOldMock10) {
+      stored = stored.filter(
+        (e) => !(e.period === "10-2026" && (e.id.match(/^eval-\d+$/) || e.id.startsWith("eval-1791701946589")))
+      );
+      localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(stored));
+    }
+
     const existingIds = new Set(stored.map((e) => e.id));
     const missing = INITIAL_EVALUATIONS.filter((e) => !existingIds.has(e.id));
     if (missing.length > 0) {
