@@ -327,5 +327,61 @@ export const INITIAL_USERS: AppUser[] = [
     "title": "NHÂN VIÊN",
     "password": "Ut16082605",
     "role": "User"
+  },
+  {
+    "manv": "TKV02",
+    "name": "ĐẶNG NGỌC TRUNG",
+    "dept": "IT",
+    "title": "PHÓ PHÒNG",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "TKV08",
+    "name": "NGUYỄN THANH THÙY DUNG",
+    "dept": "PHÒNG TCHC",
+    "title": "TRƯỞNG PHÒNG",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "TKV10",
+    "name": "TRẦN VĂN DƯƠNG",
+    "dept": "KHO",
+    "title": "QUẢN LÝ KHO",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "TKV16",
+    "name": "PHAN KHẮC NINH",
+    "dept": "XUẤT NHẬP KHẨU",
+    "title": "QUẢN LÝ",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "TKV27",
+    "name": "VÕ KIM HỒNG",
+    "dept": "PHÒNG KINH DOANH",
+    "title": "PHÓ PHÒNG",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "TKV42",
+    "name": "LÂM TẤN ĐẠT",
+    "dept": "ĐIỂM TẬP KẾT",
+    "title": "QUẢN LÝ",
+    "password": "123",
+    "role": "Manager"
+  },
+  {
+    "manv": "NVTKV025",
+    "name": "Admin",
+    "dept": "Vi tính",
+    "title": "Admin",
+    "password": "123",
+    "role": "Admin"
   }
 ];

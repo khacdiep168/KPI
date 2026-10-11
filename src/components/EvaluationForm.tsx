@@ -161,7 +161,7 @@ export default function EvaluationForm({
       setFeedback(existing.selfFeedback || "");
       const recType: EvaluationType =
         existing.evaluationType || (existing.scores?.q8 !== undefined ? "STAFF" : "MANAGER");
-      setEvaluationType(recType);
+      setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : recType);
 
       // In current month and manager has not reviewed yet:
       // Allow editing if initialEditMode is true
@@ -186,6 +186,7 @@ export default function EvaluationForm({
 
   const handleSwitchEvaluationType = (newType: EvaluationType) => {
     if (isLocked) return;
+    if (isManagerTitleOrRole(targetUser) && newType === "STAFF") return;
     if (newType === evaluationType) return;
     if (Object.keys(scores).length > 0) {
       const confirmSwitch = window.confirm(
@@ -461,36 +462,42 @@ export default function EvaluationForm({
                 Biểu mẫu đánh giá:
               </span>
               <div className="inline-flex rounded-xl bg-slate-950/80 p-1 border border-slate-700/80 gap-1">
-                <button
-                  type="button"
-                  disabled={isLocked}
-                  onClick={() => handleSwitchEvaluationType("STAFF")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    evaluationType === "STAFF"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-slate-400 hover:text-white"
-                  } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
-                >
-                  <span>👤 Nhân Viên (10 Tiêu Chí)</span>
-                  {!isManagerTitleOrRole(targetUser) && (
-                    <span className="text-[9px] bg-blue-400/20 text-blue-300 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Phù hợp</span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  disabled={isLocked}
-                  onClick={() => handleSwitchEvaluationType("MANAGER")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    evaluationType === "MANAGER"
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
-                      : "text-slate-400 hover:text-white"
-                  } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
-                >
-                  <span>👔 Cấp Quản Lý (7 Tiêu Chí - QĐ 11/QĐ-TKV)</span>
-                  {isManagerTitleOrRole(targetUser) && (
-                    <span className="text-[9px] bg-purple-400/30 text-purple-200 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Gợi ý cho chức vụ</span>
-                  )}
-                </button>
+                {!isManagerTitleOrRole(targetUser) ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => handleSwitchEvaluationType("STAFF")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        evaluationType === "STAFF"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-slate-400 hover:text-white"
+                      } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
+                    >
+                      <span>👤 Nhân Viên (10 Tiêu Chí)</span>
+                      <span className="text-[9px] bg-blue-400/20 text-blue-300 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Phù hợp</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isLocked}
+                      onClick={() => handleSwitchEvaluationType("MANAGER")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        evaluationType === "MANAGER"
+                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
+                          : "text-slate-400 hover:text-white"
+                      } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
+                    >
+                      <span>👔 Cấp Quản Lý (7 Tiêu Chí)</span>
+                    </button>
+                  </>
+                ) : (
+                  <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm flex items-center gap-2">
+                    <span>👔 Cấp Quản Lý (7 Tiêu Chí - QĐ 11/QĐ-TKV)</span>
+                    <span className="text-[9px] bg-white/20 text-white px-2 py-0.5 rounded-md font-medium">
+                      Bắt buộc cho cấp Quản lý
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

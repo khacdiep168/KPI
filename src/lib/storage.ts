@@ -16,30 +16,28 @@ const STORAGE_KEYS = {
 };
 
 export const INITIAL_PERIODS: KpiPeriod[] = [
-  {
-    id: "p-2026-10",
-    monthYear: "10-2026",
-    name: "Kỳ đánh giá KPI Tháng 10/2026",
-    isOpen: true,
-    startDate: "2026-10-01",
-    endDate: "2026-10-31",
-  },
-  {
-    id: "p-2026-09",
-    monthYear: "09-2026",
-    name: "Kỳ đánh giá KPI Tháng 09/2026",
-    isOpen: false,
-    startDate: "2026-09-01",
-    endDate: "2026-09-30",
-  },
-  {
-    id: "p-2026-08",
-    monthYear: "08-2026",
-    name: "Kỳ đánh giá KPI Tháng 08/2026",
-    isOpen: false,
-    startDate: "2026-08-01",
-    endDate: "2026-08-31",
-  },
+  { id: "p-2026-10", monthYear: "10-2026", name: "Kỳ đánh giá KPI Tháng 10/2026", isOpen: true, startDate: "2026-10-01", endDate: "2026-10-31" },
+  { id: "p-2026-09", monthYear: "09-2026", name: "Kỳ đánh giá KPI Tháng 09/2026", isOpen: false, startDate: "2026-09-01", endDate: "2026-09-30" },
+  { id: "p-2026-08", monthYear: "08-2026", name: "Kỳ đánh giá KPI Tháng 08/2026", isOpen: false, startDate: "2026-08-01", endDate: "2026-08-31" },
+  { id: "p-2026-07", monthYear: "07-2026", name: "Kỳ đánh giá KPI Tháng 07/2026", isOpen: false, startDate: "2026-07-01", endDate: "2026-07-31" },
+  { id: "p-2026-06", monthYear: "06-2026", name: "Kỳ đánh giá KPI Tháng 06/2026", isOpen: false, startDate: "2026-06-01", endDate: "2026-06-30" },
+  { id: "p-2026-05", monthYear: "05-2026", name: "Kỳ đánh giá KPI Tháng 05/2026", isOpen: false, startDate: "2026-05-01", endDate: "2026-05-31" },
+  { id: "p-2026-04", monthYear: "04-2026", name: "Kỳ đánh giá KPI Tháng 04/2026", isOpen: false, startDate: "2026-04-01", endDate: "2026-04-30" },
+  { id: "p-2026-03", monthYear: "03-2026", name: "Kỳ đánh giá KPI Tháng 03/2026", isOpen: false, startDate: "2026-03-01", endDate: "2026-03-31" },
+  { id: "p-2026-02", monthYear: "02-2026", name: "Kỳ đánh giá KPI Tháng 02/2026", isOpen: false, startDate: "2026-02-01", endDate: "2026-02-28" },
+  { id: "p-2026-01", monthYear: "01-2026", name: "Kỳ đánh giá KPI Tháng 01/2026", isOpen: false, startDate: "2026-01-01", endDate: "2026-01-31" },
+  { id: "p-2025-12", monthYear: "12-2025", name: "Kỳ đánh giá KPI Tháng 12/2025", isOpen: false, startDate: "2025-12-01", endDate: "2025-12-31" },
+  { id: "p-2025-11", monthYear: "11-2025", name: "Kỳ đánh giá KPI Tháng 11/2025", isOpen: false, startDate: "2025-11-01", endDate: "2025-11-30" },
+  { id: "p-2025-10", monthYear: "10-2025", name: "Kỳ đánh giá KPI Tháng 10/2025", isOpen: false, startDate: "2025-10-01", endDate: "2025-10-31" },
+  { id: "p-2025-09", monthYear: "09-2025", name: "Kỳ đánh giá KPI Tháng 09/2025", isOpen: false, startDate: "2025-09-01", endDate: "2025-09-30" },
+  { id: "p-2025-08", monthYear: "08-2025", name: "Kỳ đánh giá KPI Tháng 08/2025", isOpen: false, startDate: "2025-08-01", endDate: "2025-08-31" },
+  { id: "p-2025-07", monthYear: "07-2025", name: "Kỳ đánh giá KPI Tháng 07/2025", isOpen: false, startDate: "2025-07-01", endDate: "2025-07-31" },
+  { id: "p-2025-06", monthYear: "06-2025", name: "Kỳ đánh giá KPI Tháng 06/2025", isOpen: false, startDate: "2025-06-01", endDate: "2025-06-30" },
+  { id: "p-2025-05", monthYear: "05-2025", name: "Kỳ đánh giá KPI Tháng 05/2025", isOpen: false, startDate: "2025-05-01", endDate: "2025-05-31" },
+  { id: "p-2025-04", monthYear: "04-2025", name: "Kỳ đánh giá KPI Tháng 04/2025", isOpen: false, startDate: "2025-04-01", endDate: "2025-04-30" },
+  { id: "p-2025-03", monthYear: "03-2025", name: "Kỳ đánh giá KPI Tháng 03/2025", isOpen: false, startDate: "2025-03-01", endDate: "2025-03-31" },
+  { id: "p-2025-02", monthYear: "02-2025", name: "Kỳ đánh giá KPI Tháng 02/2025", isOpen: false, startDate: "2025-02-01", endDate: "2025-02-28" },
+  { id: "p-2024-08", monthYear: "08-2024", name: "Kỳ đánh giá KPI Tháng 08/2024", isOpen: false, startDate: "2024-08-01", endDate: "2024-08-31" },
 ];
 
 export function getCurrentUser(): User | null {
@@ -228,12 +226,22 @@ export function findUserByInput(input: string): User | undefined {
 export function getEvaluations(): EvaluationRecord[] {
   if (typeof window === "undefined") return INITIAL_EVALUATIONS;
   const data = localStorage.getItem(STORAGE_KEYS.EVALUATIONS);
+  let list = INITIAL_EVALUATIONS;
   if (!data) {
     localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(INITIAL_EVALUATIONS));
     return INITIAL_EVALUATIONS;
   }
   try {
-    return JSON.parse(data);
+    const stored: EvaluationRecord[] = JSON.parse(data);
+    const existingIds = new Set(stored.map((e) => e.id));
+    const missing = INITIAL_EVALUATIONS.filter((e) => !existingIds.has(e.id));
+    if (missing.length > 0) {
+      list = [...stored, ...missing];
+      localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(list));
+    } else {
+      list = stored;
+    }
+    return list;
   } catch {
     return INITIAL_EVALUATIONS;
   }
@@ -560,7 +568,15 @@ export function getPeriods(): KpiPeriod[] {
     localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(INITIAL_PERIODS));
   } else {
     try {
-      list = JSON.parse(data);
+      const stored = JSON.parse(data);
+      const existingMap = new Set(stored.map((p: KpiPeriod) => p.monthYear));
+      const missing = INITIAL_PERIODS.filter((p) => !existingMap.has(p.monthYear));
+      if (missing.length > 0) {
+        list = [...stored, ...missing];
+        localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(list));
+      } else {
+        list = stored;
+      }
     } catch {
       list = INITIAL_PERIODS;
     }
