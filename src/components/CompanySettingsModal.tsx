@@ -8,6 +8,7 @@ import {
   CompanyConfig, 
   DEFAULT_COMPANY_CONFIG 
 } from "@/lib/companyConfig";
+import { pushCompanyConfigToSupabase } from "@/lib/supabaseSync";
 import { 
   Building2, 
   Upload, 
@@ -50,6 +51,7 @@ export default function CompanySettingsModal({
   const handleSaveCompanyConfig = (e: React.FormEvent) => {
     e.preventDefault();
     const updated = saveCompanyConfig(companyForm);
+    pushCompanyConfigToSupabase(updated).catch(console.error);
     setCompanySaveSuccess(true);
     if (onSaved) onSaved(updated);
     setTimeout(() => {

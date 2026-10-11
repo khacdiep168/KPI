@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { User, EvaluationRecord, KpiPeriod } from "@/types";
+import type { CompanyConfig } from "./companyConfig";
 
 export async function syncFromSupabase(): Promise<{
   usersCount: number;
@@ -100,6 +101,32 @@ export async function syncFromSupabase(): Promise<{
       }
     }
 
+    // 4. Fetch Company Config
+    try {
+      const { data: configData, error: configErr } = await supabase
+        .from("company_config")
+        .select("*")
+        .eq("id", "default")
+        .maybeSingle();
+
+      if (!configErr && configData) {
+        const mappedConfig: CompanyConfig = {
+          companyName: configData.company_name || "CÔNG TY TNHH TM THẾ KỶ VÀNG",
+          parentOrg: configData.parent_org || "",
+          shortName: configData.short_name || "THẾ KỶ VÀNG",
+          address: configData.address || "Tây Ninh",
+          signatureLocation: configData.signature_location || "Tây Ninh",
+          logoUrl: configData.logo_url || "/logo.png",
+        };
+        if (typeof window !== "undefined") {
+          localStorage.setItem("tkv_kpi_company_config", JSON.stringify(mappedConfig));
+          window.dispatchEvent(new CustomEvent("company-config-changed", { detail: mappedConfig }));
+        }
+      }
+    } catch (cfgErr) {
+      console.error("Error fetching company_config:", cfgErr);
+    }
+
     return {
       usersCount: usersData?.length || 0,
       evaluationsCount: evalData?.length || 0,
@@ -163,5 +190,22 @@ export async function pushUserToSupabase(u: User): Promise<void> {
     });
   } catch (err) {
     console.error("Failed to push user to Supabase:", err);
+  }
+}
+
+export async function pushCompanyConfigToSupabase(cfg: CompanyConfig): Promise<void> {
+  try {
+    await supabase.from("company_config").upsert({
+      id: "default",
+      company_name: cfg.companyName,
+      parent_org: cfg.parentOrg || "",
+      short_name: cfg.shortName || "THẾ KỶ VÀNG",
+      address: cfg.address || "",
+      signature_location: cfg.signatureLocation || "",
+      logo_url: cfg.logoUrl || "",
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error("Failed to push company config to Supabase:", err);
   }
 }

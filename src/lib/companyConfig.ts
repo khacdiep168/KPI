@@ -13,9 +13,9 @@ export const DEFAULT_COMPANY_CONFIG: CompanyConfig = {
   companyName: "CÔNG TY TNHH TM THẾ KỶ VÀNG",
   parentOrg: "",
   shortName: "THẾ KỶ VÀNG",
-  address: "Quảng Ninh",
-  signatureLocation: "Quảng Ninh",
-  logoUrl: "",
+  address: "Tây Ninh",
+  signatureLocation: "Tây Ninh",
+  logoUrl: "/logo.png",
 };
 
 export function getCompanyConfig(): CompanyConfig {
@@ -39,6 +39,10 @@ export function saveCompanyConfig(config: Partial<CompanyConfig>): CompanyConfig
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("company-config-changed", { detail: updated }));
     }
+    // Dynamic import or direct call to sync to Supabase
+    import("./supabaseSync").then(({ pushCompanyConfigToSupabase }) => {
+      pushCompanyConfigToSupabase(updated).catch(console.error);
+    }).catch(console.error);
     return updated;
   } catch (err) {
     console.error("Failed to save company config:", err);
