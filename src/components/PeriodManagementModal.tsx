@@ -178,9 +178,23 @@ export default function PeriodManagementModal({
     if (!period.endDate) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Kiểm tra chưa tới ngày bắt đầu
+    if (period.startDate) {
+      const start = new Date(period.startDate);
+      start.setHours(0, 0, 0, 0);
+      const daysUntilStart = Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilStart > 0) {
+        return {
+          isExpired: false,
+          text: `Chưa mở (Bắt đầu sau ${daysUntilStart} ngày)`,
+          color: "text-amber-700 bg-amber-50 border-amber-200 font-semibold",
+        };
+      }
+    }
+
     const end = new Date(period.endDate);
     end.setHours(23, 59, 59, 999);
-
     const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
@@ -193,13 +207,13 @@ export default function PeriodManagementModal({
       return {
         isExpired: false,
         text: "Hôm nay là hạn chót",
-        color: "text-amber-600 bg-amber-50 border-amber-200 font-bold",
+        color: "text-rose-600 bg-rose-50 border-rose-200 font-bold",
       };
     } else {
       return {
         isExpired: false,
-        text: `Còn ${diffDays} ngày đến hạn`,
-        color: "text-blue-600 bg-blue-50 border-blue-200",
+        text: `Đang mở (Còn ${diffDays} ngày)`,
+        color: "text-emerald-700 bg-emerald-50 border-emerald-200 font-semibold",
       };
     }
   };

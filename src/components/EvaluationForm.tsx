@@ -20,7 +20,8 @@ import {
   canUserManageAll,
   getEvaluatedTargetManvs,
   updateEvaluation,
-  isEvaluationInCurrentMonth
+  isEvaluationInCurrentMonth,
+  getPeriodStatus
 } from "@/lib/storage";
 import { getBadgeColor } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -65,6 +66,7 @@ export default function EvaluationForm({
     return (periods.find((p) => p.isOpen) || periods[0]).monthYear;
   });
   const activePeriod = periods.find((p) => p.monthYear === selectedPeriodMonthYear) || periods[0];
+  const periodStatus = useMemo(() => getPeriodStatus(activePeriod), [activePeriod]);
   const [isEditing, setIsEditing] = useState<boolean>(Boolean(initialEditMode));
 
   // Colleagues filtered by department & manager scope
@@ -153,7 +155,8 @@ export default function EvaluationForm({
     setActiveStep(1);
 
     const existing = getEvaluationForTarget(currentUser.manv, targetManv, activePeriod.monthYear);
-    const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
+    const pStatus = getPeriodStatus(activePeriod);
+    const canEvaluate = pStatus.canEvaluate;
     const managerAlreadyReviewed = existing?.managerScore !== null && existing?.managerScore !== undefined;
 
     if (existing) {
@@ -168,9 +171,9 @@ export default function EvaluationForm({
         setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : recType);
       }
 
-      // In current month and manager has not reviewed yet:
-      // Allow editing if initialEditMode is true
-      if (inCurrentMonth && !managerAlreadyReviewed && initialEditMode) {
+      // Trong thời hạn nộp đánh giá và Quản lý chưa chấm:
+      // Cho phép sửa nếu initialEditMode là true
+      if (canEvaluate && !managerAlreadyReviewed && initialEditMode) {
         setIsEditing(true);
         setIsLocked(false);
       } else {
@@ -180,8 +183,8 @@ export default function EvaluationForm({
     } else {
       setExistingRecord(null);
       setIsEditing(false);
-      // If period is closed or not in current month, lock it in view-only mode
-      setIsLocked(!activePeriod.isOpen || !inCurrentMonth);
+      // Khóa nếu kỳ đánh giá chưa mở, đã đóng hoặc quá hạn nộp
+      setIsLocked(!canEvaluate);
       setScores({});
       setFeedback("");
       if (!isManagerTitleOrRole(currentUser)) {
@@ -191,7 +194,15 @@ export default function EvaluationForm({
         setEvaluationType(isManagerTitleOrRole(resolvedTarget) ? "MANAGER" : "STAFF");
       }
     }
-  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode]);
+  }, [
+    targetManv, 
+    currentUser.manv, 
+    activePeriod.monthYear, 
+    activePeriod.isOpen, 
+    activePeriod.startDate, 
+    activePeriod.endDate, 
+    initialEditMode
+  ]);
 
   const handleSwitchEvaluationType = (newType: EvaluationType) => {
     if (isLocked) return;
@@ -284,10 +295,9 @@ export default function EvaluationForm({
       return;
     }
 
-    const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
-
-    if (!inCurrentMonth) {
-      alert(`Kỳ đánh giá ${activePeriod.name} đã qua tháng (đã đóng). Không thể thực hiện đánh giá hoặc chỉnh sửa!`);
+    const currentPStatus = getPeriodStatus(activePeriod);
+    if (!currentPStatus.canEvaluate) {
+      alert(currentPStatus.message);
       return;
     }
 
@@ -402,14 +412,23 @@ export default function EvaluationForm({
                 ))}
               </select>
             </div>
-            <span className="text-xs text-slate-400">
-              Hạn nộp: <strong className="text-slate-200">{new Date(activePeriod.endDate).toLocaleDateString("vi-VN")}</strong>
-              {!activePeriod.isOpen && (
-                <span className="ml-2 text-rose-400 font-bold bg-rose-950/60 px-2 py-0.5 rounded-md border border-rose-800">
-                  Đã Đóng
-                </span>
-              )}
-            </span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-slate-300">
+                Thời hạn: <strong className="text-white">{periodStatus.formattedStart}</strong> đến{" "}
+                <strong className="text-white">{periodStatus.formattedEnd}</strong>
+              </span>
+              <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                !periodStatus.isOpen
+                  ? "bg-rose-950/70 text-rose-300 border-rose-800"
+                  : !periodStatus.isStarted
+                  ? "bg-amber-950/70 text-amber-300 border-amber-800"
+                  : periodStatus.isExpired
+                  ? "bg-rose-950/70 text-rose-300 border-rose-800"
+                  : "bg-emerald-950/70 text-emerald-300 border-emerald-800"
+              }`}>
+                {periodStatus.statusText}
+              </span>
+            </div>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -525,6 +544,48 @@ export default function EvaluationForm({
           >
             Hủy Sửa
           </button>
+        </div>
+      )}
+
+      {/* Notice Banner when period is closed, not yet started, or expired */}
+      {!existingRecord && !periodStatus.canEvaluate && (
+        <div className={`mb-6 p-4 rounded-2xl border flex items-start gap-3 shadow-xs ${
+          !periodStatus.isOpen 
+            ? "bg-slate-100 border-slate-300 text-slate-800"
+            : !periodStatus.isStarted
+            ? "bg-amber-50 border-amber-300 text-amber-900"
+            : "bg-rose-50 border-rose-300 text-rose-900"
+        }`}>
+          <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${
+            !periodStatus.isOpen 
+              ? "text-slate-600" 
+              : !periodStatus.isStarted 
+              ? "text-amber-600" 
+              : "text-rose-600"
+          }`} />
+          <div className="text-xs sm:text-sm flex-1">
+            <p className="font-bold flex items-center gap-2">
+              <span>
+                {!periodStatus.isOpen 
+                  ? "KỲ ĐÁNH GIÁ ĐANG TẠM ĐÓNG" 
+                  : !periodStatus.isStarted 
+                  ? "CHƯA ĐẾN THỜI HẠN ĐÁNH GIÁ" 
+                  : "ĐÃ HẾT HẠN NỘP ĐÁNH GIÁ"}
+              </span>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-extrabold ${
+                !periodStatus.isOpen 
+                  ? "bg-slate-200 text-slate-700" 
+                  : !periodStatus.isStarted 
+                  ? "bg-amber-200 text-amber-900" 
+                  : "bg-rose-200 text-rose-900"
+              }`}>
+                {periodStatus.statusText}
+              </span>
+            </p>
+            <p className="mt-1 leading-relaxed">
+              {periodStatus.message}
+            </p>
+          </div>
         </div>
       )}
 
@@ -1318,8 +1379,10 @@ export default function EvaluationForm({
                 <p className="text-xs text-slate-500 mt-1">
                   {isEditing
                     ? "Bạn đang ở chế độ chỉnh sửa. Nhấn nút bên phải để lưu cập nhật phiếu đánh giá."
-                    : isLocked
+                    : existingRecord
                     ? "Trong tháng này bạn đã hoàn tất đánh giá cho nhân sự này. Theo quy định không được đánh giá tiếp."
+                    : !periodStatus.canEvaluate
+                    ? periodStatus.message
                     : answeredCount === totalQuestions
                     ? `Bạn đã hoàn thành đủ ${totalQuestions}/${totalQuestions} tiêu chí. Sẵn sàng gửi bài.`
                     : `Còn thiếu ${totalQuestions - answeredCount} tiêu chí chưa hoàn thành.`}
@@ -1346,10 +1409,15 @@ export default function EvaluationForm({
                     <CheckCircle2 className="w-4 h-4" />
                     <span>Lưu Cập Nhật Đánh Giá</span>
                   </>
-                ) : isLocked ? (
+                ) : existingRecord ? (
                   <>
                     <Lock className="w-4 h-4" />
                     <span>Đã Hoàn Tất (Không Thể Đánh Giá Tiếp)</span>
+                  </>
+                ) : !periodStatus.canEvaluate ? (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>{periodStatus.statusText} (Không thể nộp phiếu)</span>
                   </>
                 ) : (
                   <>

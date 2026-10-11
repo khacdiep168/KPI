@@ -4,7 +4,12 @@ import { User, EvaluationRecord, KpiPeriod } from "@/types";
 import { INITIAL_USERS } from "@/data/users";
 import { INITIAL_EVALUATIONS } from "@/data/evaluations";
 import { calculateClassification, isManagerTitleOrRole } from "@/data/criteria";
-import { pushEvaluationToSupabase, pushUserToSupabase } from "./supabaseSync";
+import { 
+  pushEvaluationToSupabase, 
+  pushUserToSupabase, 
+  pushPeriodToSupabase, 
+  deletePeriodFromSupabase 
+} from "./supabaseSync";
 import { getCompanyConfig } from "./companyConfig";
 import * as XLSX from "xlsx";
 
@@ -16,7 +21,7 @@ const STORAGE_KEYS = {
 };
 
 export const INITIAL_PERIODS: KpiPeriod[] = [
-  { id: "p-2026-10", monthYear: "10-2026", name: "Kỳ đánh giá KPI Tháng 10/2026", isOpen: true, startDate: "2026-10-01", endDate: "2026-10-31" },
+  { id: "p-2026-10", monthYear: "10-2026", name: "Kỳ đánh giá KPI Tháng 10/2026", isOpen: true, startDate: "2026-10-25", endDate: "2026-10-31" },
   { id: "p-2026-09", monthYear: "09-2026", name: "Kỳ đánh giá KPI Tháng 09/2026", isOpen: false, startDate: "2026-09-01", endDate: "2026-09-30" },
   { id: "p-2026-08", monthYear: "08-2026", name: "Kỳ đánh giá KPI Tháng 08/2026", isOpen: false, startDate: "2026-08-01", endDate: "2026-08-31" },
   { id: "p-2026-07", monthYear: "07-2026", name: "Kỳ đánh giá KPI Tháng 07/2026", isOpen: false, startDate: "2026-07-01", endDate: "2026-07-31" },
@@ -605,28 +610,128 @@ export function getPeriods(): KpiPeriod[] {
   return [...list].sort((a, b) => comparePeriodsDesc(a.monthYear, b.monthYear));
 }
 
+export interface PeriodStatus {
+  isOpen: boolean;        // Toggle bật/tắt của Admin
+  isStarted: boolean;     // Đã đến ngày bắt đầu (today >= startDate)
+  isExpired: boolean;     // Đã quá ngày kết thúc (today > endDate)
+  canEvaluate: boolean;   // Đủ điều kiện chấm: isOpen && isStarted && !isExpired
+  statusText: string;     // Mô tả trạng thái ngắn gọn
+  message: string;        // Thông báo chi tiết cho người dùng
+  startDate: string;
+  endDate: string;
+  formattedStart: string;
+  formattedEnd: string;
+}
+
+export function getPeriodStatus(periodInput: KpiPeriod | string): PeriodStatus {
+  let period: KpiPeriod | undefined;
+  if (typeof periodInput === "string") {
+    const list = getPeriods();
+    period = list.find((p) => p.monthYear === periodInput || p.id === periodInput);
+  } else {
+    period = periodInput;
+  }
+
+  // Lấy ngày hiện tại theo định dạng chuẩn YYYY-MM-DD
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  const todayStr = `${y}-${m}-${d}`;
+
+  if (!period) {
+    return {
+      isOpen: false,
+      isStarted: false,
+      isExpired: true,
+      canEvaluate: false,
+      statusText: "Không tồn tại",
+      message: "Không tìm thấy thông tin kỳ đánh giá trong hệ thống.",
+      startDate: `${y}-${m}-01`,
+      endDate: `${y}-${m}-31`,
+      formattedStart: `01/${m}/${y}`,
+      formattedEnd: `31/${m}/${y}`,
+    };
+  }
+
+  const startDate = period.startDate || `${y}-${m}-01`;
+  const endDate = period.endDate || `${y}-${m}-31`;
+
+  const formatVn = (isoStr: string) => {
+    const parts = (isoStr || "").split("-");
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoStr;
+  };
+
+  const formattedStart = formatVn(startDate);
+  const formattedEnd = formatVn(endDate);
+
+  const isOpen = period.isOpen === true;
+  const isStarted = todayStr >= startDate;
+  const isExpired = todayStr > endDate;
+
+  if (!isOpen) {
+    return {
+      isOpen: false,
+      isStarted,
+      isExpired,
+      canEvaluate: false,
+      statusText: "Đã đóng",
+      message: `Kỳ đánh giá "${period.name}" hiện đang đóng bởi Quản trị viên.`,
+      startDate,
+      endDate,
+      formattedStart,
+      formattedEnd,
+    };
+  }
+
+  if (!isStarted) {
+    return {
+      isOpen: true,
+      isStarted: false,
+      isExpired: false,
+      canEvaluate: false,
+      statusText: "Chưa đến hạn",
+      message: `Chưa đến thời hạn đánh giá! Kỳ đánh giá "${period.name}" sẽ mở từ ngày ${formattedStart} đến hết ngày ${formattedEnd}. Vui lòng quay lại trong thời hạn quy định.`,
+      startDate,
+      endDate,
+      formattedStart,
+      formattedEnd,
+    };
+  }
+
+  if (isExpired) {
+    return {
+      isOpen: true,
+      isStarted: true,
+      isExpired: true,
+      canEvaluate: false,
+      statusText: "Đã hết hạn",
+      message: `Đã hết hạn nộp phiếu đánh giá cho kỳ "${period.name}"! Hạn chót nộp phiếu là ngày ${formattedEnd}.`,
+      startDate,
+      endDate,
+      formattedStart,
+      formattedEnd,
+    };
+  }
+
+  return {
+    isOpen: true,
+    isStarted: true,
+    isExpired: false,
+    canEvaluate: true,
+    statusText: "Đang mở đánh giá",
+    message: `Kỳ đánh giá đang mở (Thời hạn nộp: Từ ngày ${formattedStart} đến hết ngày ${formattedEnd}).`,
+    startDate,
+    endDate,
+    formattedStart,
+    formattedEnd,
+  };
+}
+
 export function isEvaluationInCurrentMonth(period: string): boolean {
   if (!period) return false;
-
-  const periods = getPeriods();
-  const matched = periods.find((p) => p.monthYear === period);
-  if (matched) {
-    return matched.isOpen === true;
-  }
-
-  // Fallback: check if matches current calendar month & year
-  const now = new Date();
-  const curMonth = now.getMonth() + 1;
-  const curYear = now.getFullYear();
-
-  const parts = period.split(/[-/]/);
-  if (parts.length >= 2) {
-    const pMonth = parseInt(parts[0], 10);
-    const pYear = parseInt(parts[1], 10);
-    return pMonth === curMonth && pYear === curYear;
-  }
-
-  return false;
+  return getPeriodStatus(period).canEvaluate;
 }
 
 export function getAllPeriods(): { monthYear: string; name: string }[] {
@@ -662,6 +767,10 @@ export function savePeriod(period: KpiPeriod): KpiPeriod {
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(periods));
   }
+  // Đồng bộ lưu kỳ lên Supabase
+  pushPeriodToSupabase(period).catch((err) => {
+    console.error("Failed to push period to Supabase:", err);
+  });
   return period;
 }
 
@@ -677,6 +786,10 @@ export function updatePeriod(id: string, updates: Partial<KpiPeriod>): KpiPeriod
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(periods));
   }
+  // Đồng bộ cập nhật kỳ lên Supabase ngay lập tức
+  pushPeriodToSupabase(updated).catch((err) => {
+    console.error("Failed to push updated period to Supabase:", err);
+  });
   return updated;
 }
 
@@ -687,6 +800,10 @@ export function deletePeriod(id: string): boolean {
   if (typeof window !== "undefined") {
     localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(filtered));
   }
+  // Đồng bộ xóa kỳ trên Supabase
+  deletePeriodFromSupabase(id).catch((err) => {
+    console.error("Failed to delete period from Supabase:", err);
+  });
   return true;
 }
 

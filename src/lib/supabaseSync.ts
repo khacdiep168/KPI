@@ -34,14 +34,31 @@ export async function syncFromSupabase(): Promise<{
       .order("created_at", { ascending: false });
 
     if (!periodsErr && periodsData && periodsData.length > 0) {
-      const mappedPeriods: KpiPeriod[] = periodsData.map((p: any) => ({
-        id: p.id,
-        monthYear: p.month_year,
-        name: p.name,
-        isOpen: p.is_open,
-        startDate: p.start_date || "2026-10-01",
-        endDate: p.end_date || "2026-10-31",
-      }));
+      const mappedPeriods: KpiPeriod[] = periodsData.map((p: any) => {
+        // Fallback dates correspond to the specific month and year of the period
+        let fallbackStart = "2026-10-01";
+        let fallbackEnd = "2026-10-31";
+        const parts = (p.month_year || "").split("-");
+        if (parts.length === 2) {
+          const m = parseInt(parts[0], 10);
+          const y = parseInt(parts[1], 10);
+          if (!isNaN(m) && !isNaN(y)) {
+            const mStr = String(m).padStart(2, "0");
+            const lastDay = new Date(y, m, 0).getDate();
+            fallbackStart = `${y}-${mStr}-01`;
+            fallbackEnd = `${y}-${mStr}-${String(lastDay).padStart(2, "0")}`;
+          }
+        }
+
+        return {
+          id: p.id,
+          monthYear: p.month_year,
+          name: p.name,
+          isOpen: p.is_open ?? false,
+          startDate: p.start_date || fallbackStart,
+          endDate: p.end_date || fallbackEnd,
+        };
+      });
       // Sắp xếp kỳ từ cao xuống thấp (10-2026, 09-2026, ...)
       mappedPeriods.sort((a, b) => {
         const [mA, yA] = (a.monthYear || "").split("-").map(Number);
@@ -209,5 +226,28 @@ export async function pushCompanyConfigToSupabase(cfg: CompanyConfig): Promise<v
     });
   } catch (err) {
     console.error("Failed to push company config to Supabase:", err);
+  }
+}
+
+export async function pushPeriodToSupabase(p: KpiPeriod): Promise<void> {
+  try {
+    await supabase.from("kpi_periods").upsert({
+      id: p.id,
+      month_year: p.monthYear,
+      name: p.name,
+      is_open: p.isOpen,
+      start_date: p.startDate,
+      end_date: p.endDate,
+    });
+  } catch (err) {
+    console.error("Failed to push period to Supabase:", err);
+  }
+}
+
+export async function deletePeriodFromSupabase(id: string): Promise<void> {
+  try {
+    await supabase.from("kpi_periods").delete().or(`id.eq.${id},month_year.eq.${id}`);
+  } catch (err) {
+    console.error("Failed to delete period from Supabase:", err);
   }
 }
