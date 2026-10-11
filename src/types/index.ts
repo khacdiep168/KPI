@@ -13,10 +13,12 @@ export interface User {
 export type Classification = "Xuất sắc" | "Giỏi" | "Khá" | "Trung Bình" | "Yếu";
 
 export type EvaluationStatus = "SUBMITTED" | "MANAGER_REVIEWED" | "APPROVED";
+export type EvaluationType = "STAFF" | "MANAGER";
 
 export interface EvaluationRecord {
   id: string;
   period: string; // e.g., "10-2026"
+  evaluationType?: EvaluationType; // "STAFF" (10 câu nhân viên) hoặc "MANAGER" (7 câu cấp quản lý)
   evaluatorManv: string;
   evaluatorName: string;
   evaluatorDept: string;
@@ -24,7 +26,7 @@ export interface EvaluationRecord {
   targetName: string;
   targetDept: string;
   
-  // 10 criteria scores
+  // Criteria scores (q1-q10 for STAFF, q1-q7 for MANAGER)
   scores: {
     q1: number;
     q2: number;
@@ -33,9 +35,9 @@ export interface EvaluationRecord {
     q5: number;
     q6: number;
     q7: number;
-    q8: number;
-    q9: number;
-    q10: number;
+    q8?: number;
+    q9?: number;
+    q10?: number;
   };
   selfTotalScore: number;
   selfClassification: Classification;

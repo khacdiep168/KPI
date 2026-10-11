@@ -256,7 +256,18 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
                         {rec.targetManv}
                       </td>
                       <td className="py-3.5 px-4">
-                        <p className="font-bold text-slate-900">{rec.targetName}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-bold text-slate-900">{rec.targetName}</p>
+                          {rec.evaluationType === "MANAGER" || rec.scores.q8 === undefined ? (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                              👔 Quản lý
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                              👤 NV
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-slate-400">Kỳ {rec.period}</p>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 font-medium">

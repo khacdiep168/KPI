@@ -741,13 +741,14 @@ export function exportEvaluationsToExcel(records: EvaluationRecord[], filename?:
     "Người Được Đánh Giá",
     "Bộ Phận",
     "Kỳ Đánh Giá",
-    "Câu 1 (Kỷ luật)",
-    "Câu 2 (Thái độ)",
-    "Câu 3 (Giao tiếp)",
-    "Câu 4 (Hoàn thành CV)",
-    "Câu 5 (Kiến thức)",
-    "Câu 6 (Kỹ năng)",
-    "Câu 7 (Công nghệ)",
+    "Loại Phiếu",
+    "Câu 1 (Kỷ luật / Thái độ)",
+    "Câu 2 (Thái độ / Kiến thức)",
+    "Câu 3 (Giao tiếp / Hoàn thành CV)",
+    "Câu 4 (Hoàn thành CV / Kỹ năng QL)",
+    "Câu 5 (Kiến thức / Quản lý tài nguyên)",
+    "Câu 6 (Kỹ năng / Phân tích xử lý)",
+    "Câu 7 (Công nghệ / Sáng tạo cải tiến)",
     "Câu 8 (Tập thể)",
     "Câu 9 (Bản thân)",
     "Câu 10 (Sáng tạo)",
@@ -769,6 +770,9 @@ export function exportEvaluationsToExcel(records: EvaluationRecord[], filename?:
   const rows = records.map((r) => {
     const finalScore = r.councilScore ?? r.managerScore ?? r.selfTotalScore;
     const finalClass = r.councilClassification ?? r.managerClassification ?? r.selfClassification;
+    const isManagerRec = r.evaluationType === "MANAGER" || (r.scores?.q8 === undefined && r.evaluationType !== "STAFF");
+    const evalTypeLabel = isManagerRec ? "Cấp Quản Lý (7 Tiêu chí - QĐ 11)" : "Nhân Viên (10 Tiêu chí)";
+
     return [
       r.evaluatorManv,
       r.evaluatorName,
@@ -777,6 +781,7 @@ export function exportEvaluationsToExcel(records: EvaluationRecord[], filename?:
       r.targetName,
       r.targetDept || "",
       r.period,
+      evalTypeLabel,
       r.scores?.q1 ?? 0,
       r.scores?.q2 ?? 0,
       r.scores?.q3 ?? 0,
@@ -784,9 +789,9 @@ export function exportEvaluationsToExcel(records: EvaluationRecord[], filename?:
       r.scores?.q5 ?? 0,
       r.scores?.q6 ?? 0,
       r.scores?.q7 ?? 0,
-      r.scores?.q8 ?? 0,
-      r.scores?.q9 ?? 0,
-      r.scores?.q10 ?? 0,
+      isManagerRec ? "-" : (r.scores?.q8 ?? 0),
+      isManagerRec ? "-" : (r.scores?.q9 ?? 0),
+      isManagerRec ? "-" : (r.scores?.q10 ?? 0),
       r.selfTotalScore,
       r.selfClassification,
       r.selfFeedback || "",

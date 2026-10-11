@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { EvaluationRecord, User } from "@/types";
-import { KPI_CRITERIA } from "@/data/criteria";
+import { KPI_CRITERIA, KPI_MANAGER_CRITERIA } from "@/data/criteria";
 import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
 import { getUsers } from "@/lib/storage";
 import { Printer, X, FileText, CheckCircle2 } from "lucide-react";
@@ -43,6 +43,11 @@ export default function IndividualEvaluationPrintModal({
   if (!isOpen || !evaluation || !mounted || typeof document === "undefined") {
     return null;
   }
+
+  const isManagerEval =
+    evaluation.evaluationType === "MANAGER" ||
+    (evaluation.scores.q8 === undefined && evaluation.evaluationType !== "STAFF");
+  const printCriteria = isManagerEval ? KPI_MANAGER_CRITERIA : KPI_CRITERIA;
 
   const handlePrint = () => {
     window.print();
@@ -87,10 +92,10 @@ export default function IndividualEvaluationPrintModal({
             </div>
             <div>
               <h3 className="text-sm font-bold tracking-tight">
-                Phiếu Đánh Giá Cá Nhân KPI (Chuẩn In A4)
+                {isManagerEval ? "Phiếu Đánh Giá Cấp Quản Lý KPI (Chuẩn In A4)" : "Phiếu Đánh Giá Cá Nhân KPI (Chuẩn In A4)"}
               </h3>
               <p className="text-[11px] text-slate-300">
-                {evaluation.targetName} ({evaluation.targetManv}) - Kỳ {evaluation.period}
+                {evaluation.targetName} ({evaluation.targetManv}) - Kỳ {evaluation.period} {isManagerEval ? " - [👔 Cấp Quản Lý - 7 Tiêu chí]" : " - [👤 Nhân Viên - 10 Tiêu chí]"}
               </p>
             </div>
           </div>
@@ -148,13 +153,17 @@ export default function IndividualEvaluationPrintModal({
           {/* Title */}
           <div className="text-center my-5">
             <h1 className="text-base sm:text-lg font-black uppercase tracking-wide text-slate-900">
-              PHIẾU ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC CÁ NHÂN (KPI)
+              {isManagerEval
+                ? "BẢNG TIÊU CHÍ ĐÁNH GIÁ DÀNH CHO CẤP QUẢN LÝ"
+                : "PHIẾU ĐÁNH GIÁ HIỆU QUẢ CÔNG VIỆC CÁ NHÂN (KPI)"}
             </h1>
             <p className="text-xs sm:text-sm font-semibold text-slate-700 mt-1">
               Kỳ đánh giá: Tháng {evaluation.period.includes("-") ? evaluation.period.replace("-", "/") : evaluation.period}
             </p>
             <p className="text-[11px] text-slate-500 italic mt-0.5">
-              (Kèm theo Quy chế đánh giá hiệu quả công việc định kỳ của Công ty)
+              {isManagerEval
+                ? "(Ban hành kèm theo Quyết định số 11/QĐ-TKV)"
+                : "(Kèm theo Quy chế đánh giá hiệu quả công việc định kỳ của Công ty)"}
             </p>
           </div>
 
@@ -176,7 +185,7 @@ export default function IndividualEvaluationPrintModal({
               <div>
                 <span className="font-bold text-slate-700">Chức vụ / Vị trí: </span>
                 <span className="font-semibold text-slate-900">
-                  {targetUser?.title || "Nhân viên"}
+                  {targetUser?.title || (isManagerEval ? "Quản lý" : "Nhân viên")}
                 </span>
               </div>
               <div>
@@ -192,7 +201,7 @@ export default function IndividualEvaluationPrintModal({
             </div>
           </div>
 
-          {/* 10 Criteria Breakdown Table */}
+          {/* Criteria Breakdown Table */}
           <div className="mb-5 overflow-x-auto">
             <table className="w-full border-collapse border border-slate-400 text-[11px] sm:text-xs">
               <thead>
@@ -206,7 +215,7 @@ export default function IndividualEvaluationPrintModal({
                 </tr>
               </thead>
               <tbody>
-                {KPI_CRITERIA.map((item, idx) => {
+                {printCriteria.map((item, idx) => {
                   const scoreVal = evaluation.scores[item.id as keyof typeof evaluation.scores] ?? 0;
                   return (
                     <tr key={item.id} className="hover:bg-slate-50/50">

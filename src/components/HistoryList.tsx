@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { User, EvaluationRecord } from "@/types";
 import { getEvaluations, getAllPeriods, exportEvaluationsToExcel, isEvaluationInCurrentMonth } from "@/lib/storage";
 import { getBadgeColor, getStatusBadge } from "@/lib/utils";
-import { KPI_CRITERIA } from "@/data/criteria";
+import { KPI_CRITERIA, KPI_MANAGER_CRITERIA } from "@/data/criteria";
 import { 
   FileText, 
   Calendar, 
@@ -164,6 +164,15 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
                       <span className="font-bold text-sm text-slate-900">
                         Kỳ {item.period}
                       </span>
+                      {item.evaluationType === "MANAGER" || item.scores.q8 === undefined ? (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          👔 Cấp Quản Lý
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          👤 Nhân Viên
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold border ${statusInfo.color}`}>
                         {statusInfo.label}
                       </span>
@@ -345,26 +354,42 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
             </div>
 
             {/* Criteria Breakdown Table */}
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Chi tiết 10 tiêu chí đã chấm
-            </h4>
-            <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
-              {KPI_CRITERIA.map((crit) => {
-                const scoreVal = selectedRecord.scores[crit.id as keyof typeof selectedRecord.scores];
-                return (
-                  <div key={crit.id} className="p-3 flex items-center justify-between hover:bg-slate-50">
-                    <div>
-                      <span className="font-semibold text-slate-800">{crit.title}</span>
-                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{crit.description}</p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="font-bold text-slate-900 text-sm">{scoreVal}đ</span>
-                      <span className="text-slate-400 text-[11px]">/ {crit.maxScore}đ</span>
-                    </div>
+            {(() => {
+              const isManagerRec =
+                selectedRecord.evaluationType === "MANAGER" ||
+                (selectedRecord.scores.q8 === undefined && selectedRecord.evaluationType !== "STAFF");
+              const criteriaList = isManagerRec ? KPI_MANAGER_CRITERIA : KPI_CRITERIA;
+
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Chi tiết {criteriaList.length} tiêu chí đã chấm
+                    </h4>
+                    <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                      {isManagerRec ? "👔 Cấp Quản Lý (QĐ 11/QĐ-TKV)" : "👤 Nhân Viên (10 Tiêu Chí)"}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+                    {criteriaList.map((crit) => {
+                      const scoreVal = selectedRecord.scores[crit.id as keyof typeof selectedRecord.scores];
+                      return (
+                        <div key={crit.id} className="p-3 flex items-center justify-between hover:bg-slate-50">
+                          <div>
+                            <span className="font-semibold text-slate-800">{crit.title}</span>
+                            <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{crit.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-bold text-slate-900 text-sm">{scoreVal}đ</span>
+                            <span className="text-slate-400 text-[11px]">/ {crit.maxScore}đ</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Self Feedback */}
             {selectedRecord.selfFeedback && (

@@ -1,8 +1,15 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
-import { User, EvaluationRecord } from "@/types";
-import { KPI_CRITERIA, calculateClassification, CriteriaOption } from "@/data/criteria";
+import { User, EvaluationRecord, EvaluationType } from "@/types";
+import { 
+  KPI_CRITERIA, 
+  KPI_MANAGER_CRITERIA,
+  calculateClassification, 
+  CriteriaOption,
+  isManagerTitleOrRole,
+  getCriteriaByEvaluationType
+} from "@/data/criteria";
 import { 
   saveEvaluation, 
   getUsers, 
@@ -32,7 +39,8 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
-  Check
+  Check,
+  Briefcase
 } from "lucide-react";
 
 interface EvaluationFormProps {
@@ -93,7 +101,17 @@ export default function EvaluationForm({
   });
   const targetUser = allUsers.find((u) => u.manv === targetManv) || currentUser;
 
-  // Selected scores for 10 questions
+  // Evaluation Type: STAFF (10 criteria) or MANAGER (7 criteria - QĐ 11/QĐ-TKV)
+  const [evaluationType, setEvaluationType] = useState<EvaluationType>(() => {
+    return isManagerTitleOrRole(targetUser) ? "MANAGER" : "STAFF";
+  });
+
+  const currentCriteria = useMemo(() => {
+    return getCriteriaByEvaluationType(evaluationType);
+  }, [evaluationType]);
+  const totalQuestions = currentCriteria.length;
+
+  // Selected scores for criteria questions
   const [scores, setScores] = useState<Record<string, number>>({});
   const [feedback, setFeedback] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -108,7 +126,7 @@ export default function EvaluationForm({
     return getEvaluatedTargetManvs(currentUser.manv, activePeriod.monthYear);
   }, [currentUser.manv, activePeriod.monthYear, existingRecord, submittedRecord]);
 
-  // Step-by-step navigation state (Câu 1 đến Câu 10, và Bước 11 là Tổng kết & Nộp phiếu)
+  // Step-by-step navigation state (Câu 1 đến Câu N, và Bước N+1 là Tổng kết & Nộp phiếu)
   const [activeStep, setActiveStep] = useState<number>(1);
   const [displayMode, setDisplayMode] = useState<"step" | "all">("step");
   const [isAutoAdvancing, setIsAutoAdvancing] = useState<boolean>(false);
@@ -139,6 +157,9 @@ export default function EvaluationForm({
       setExistingRecord(existing);
       setScores(existing.scores || {});
       setFeedback(existing.selfFeedback || "");
+      const recType: EvaluationType =
+        existing.evaluationType || (existing.scores?.q8 !== undefined ? "STAFF" : "MANAGER");
+      setEvaluationType(recType);
 
       // In current month and manager has not reviewed yet:
       // Allow editing if initialEditMode is true
@@ -156,8 +177,27 @@ export default function EvaluationForm({
       setIsLocked(!activePeriod.isOpen || !inCurrentMonth);
       setScores({});
       setFeedback("");
+      setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : "STAFF");
     }
-  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode]);
+  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode, targetUser]);
+
+  const handleSwitchEvaluationType = (newType: EvaluationType) => {
+    if (isLocked) return;
+    if (newType === evaluationType) return;
+    if (Object.keys(scores).length > 0) {
+      const confirmSwitch = window.confirm(
+        `Bạn có chắc muốn đổi sang ${
+          newType === "MANAGER"
+            ? "Biểu mẫu Cấp Quản Lý (7 tiêu chí - QĐ 11/QĐ-TKV)"
+            : "Biểu mẫu Nhân Viên (10 tiêu chí)"
+        }? Điểm đã chấm sẽ được làm mới lại.`
+      );
+      if (!confirmSwitch) return;
+    }
+    setEvaluationType(newType);
+    setScores({});
+    setActiveStep(1);
+  };
 
   // Calculate realtime total score
   const totalScore = useMemo(() => {
@@ -169,8 +209,8 @@ export default function EvaluationForm({
   }, [totalScore]);
 
   const answeredCount = useMemo(() => {
-    return KPI_CRITERIA.filter((c) => scores[c.id] !== undefined).length;
-  }, [scores]);
+    return currentCriteria.filter((c) => scores[c.id] !== undefined).length;
+  }, [currentCriteria, scores]);
 
   // Tự động chuyển câu tiếp theo sau khi nhân viên chọn điểm (450ms)
   const triggerAutoAdvance = (fromStep: number) => {
@@ -181,10 +221,10 @@ export default function EvaluationForm({
     setIsAutoAdvancing(true);
     advanceTimerRef.current = setTimeout(() => {
       setIsAutoAdvancing(false);
-      if (fromStep < 10) {
+      if (fromStep < totalQuestions) {
         setActiveStep(fromStep + 1);
-      } else if (fromStep === 10) {
-        setActiveStep(11); // Tự động chuyển đến màn hình Tổng kết & Ý kiến cá nhân
+      } else if (fromStep === totalQuestions) {
+        setActiveStep(totalQuestions + 1); // Tự động chuyển đến màn hình Tổng kết & Ý kiến cá nhân
       }
     }, 450);
   };
@@ -241,8 +281,8 @@ export default function EvaluationForm({
       return;
     }
 
-    if (answeredCount < KPI_CRITERIA.length) {
-      alert("Vui lòng trả lời đầy đủ 10 tiêu chí trước khi gửi đánh giá.");
+    if (answeredCount < totalQuestions) {
+      alert(`Vui lòng trả lời đầy đủ ${totalQuestions} tiêu chí trước khi gửi đánh giá.`);
       return;
     }
 
@@ -251,21 +291,26 @@ export default function EvaluationForm({
     try {
       let record: EvaluationRecord;
 
+      const scoresToSave: EvaluationRecord["scores"] = {
+        q1: scores["q1"] || 0,
+        q2: scores["q2"] || 0,
+        q3: scores["q3"] || 0,
+        q4: scores["q4"] || 0,
+        q5: scores["q5"] || 0,
+        q6: scores["q6"] || 0,
+        q7: scores["q7"] || 0,
+      };
+      if (evaluationType === "STAFF") {
+        scoresToSave.q8 = scores["q8"] || 0;
+        scoresToSave.q9 = scores["q9"] || 0;
+        scoresToSave.q10 = scores["q10"] || 0;
+      }
+
       if (existingRecord && isEditing) {
         // Cập nhật phiếu đánh giá đã tồn tại trong tháng
         const updated = updateEvaluation(existingRecord.id, {
-          scores: {
-            q1: scores["q1"] || 0,
-            q2: scores["q2"] || 0,
-            q3: scores["q3"] || 0,
-            q4: scores["q4"] || 0,
-            q5: scores["q5"] || 0,
-            q6: scores["q6"] || 0,
-            q7: scores["q7"] || 0,
-            q8: scores["q8"] || 0,
-            q9: scores["q9"] || 0,
-            q10: scores["q10"] || 0,
-          },
+          evaluationType,
+          scores: scoresToSave,
           selfTotalScore: totalScore,
           selfClassification: classification,
           selfFeedback: feedback.trim(),
@@ -279,24 +324,14 @@ export default function EvaluationForm({
         // Tạo phiếu đánh giá mới
         record = saveEvaluation({
           period: activePeriod.monthYear,
+          evaluationType,
           evaluatorManv: currentUser.manv,
           evaluatorName: currentUser.name,
           evaluatorDept: currentUser.dept,
           targetManv: targetUser.manv,
           targetName: targetUser.name,
           targetDept: targetUser.dept,
-          scores: {
-            q1: scores["q1"] || 0,
-            q2: scores["q2"] || 0,
-            q3: scores["q3"] || 0,
-            q4: scores["q4"] || 0,
-            q5: scores["q5"] || 0,
-            q6: scores["q6"] || 0,
-            q7: scores["q7"] || 0,
-            q8: scores["q8"] || 0,
-            q9: scores["q9"] || 0,
-            q10: scores["q10"] || 0,
-          },
+          scores: scoresToSave,
           selfTotalScore: totalScore,
           selfClassification: classification,
           selfFeedback: feedback.trim(),
@@ -359,10 +394,14 @@ export default function EvaluationForm({
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Phiếu Đánh Giá KPI Hàng Tháng
+            {evaluationType === "MANAGER"
+              ? "Phiếu Đánh Giá KPI Cấp Quản Lý"
+              : "Phiếu Đánh Giá KPI Hàng Tháng"}
           </h1>
           <p className="text-sm sm:text-base text-slate-300 mt-2 max-w-2xl">
-            Hoàn thiện 10 tiêu chí đánh giá để xác định kết quả hiệu quả công việc cá nhân. Điểm số tối đa là 100 điểm.
+            {evaluationType === "MANAGER"
+              ? "Bảng tiêu chí đánh giá dành cho cấp quản lý (Ban hành kèm theo Quyết định số 11/QĐ-TKV). Gồm 7 tiêu chí đặc thù, tổng điểm chuẩn 100 điểm."
+              : "Hoàn thiện 10 tiêu chí đánh giá để xác định kết quả hiệu quả công việc cá nhân. Điểm số tối đa là 100 điểm."}
           </p>
 
           {/* Evaluator and Target Selection */}
@@ -407,6 +446,48 @@ export default function EvaluationForm({
                     </optgroup>
                   )}
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Type Selector: Staff vs Manager */}
+          <div className="mt-4 pt-4 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <span className="text-xs text-slate-300 font-semibold flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-blue-400" />
+                Biểu mẫu đánh giá:
+              </span>
+              <div className="inline-flex rounded-xl bg-slate-950/80 p-1 border border-slate-700/80 gap-1">
+                <button
+                  type="button"
+                  disabled={isLocked}
+                  onClick={() => handleSwitchEvaluationType("STAFF")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    evaluationType === "STAFF"
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
+                >
+                  <span>👤 Nhân Viên (10 Tiêu Chí)</span>
+                  {!isManagerTitleOrRole(targetUser) && (
+                    <span className="text-[9px] bg-blue-400/20 text-blue-300 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Phù hợp</span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  disabled={isLocked}
+                  onClick={() => handleSwitchEvaluationType("MANAGER")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    evaluationType === "MANAGER"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
+                >
+                  <span>👔 Cấp Quản Lý (7 Tiêu Chí - QĐ 11/QĐ-TKV)</span>
+                  {isManagerTitleOrRole(targetUser) && (
+                    <span className="text-[9px] bg-purple-400/30 text-purple-200 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Gợi ý cho chức vụ</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -500,25 +581,25 @@ export default function EvaluationForm({
           {/* Progress */}
           <div className="flex items-center gap-2.5 sm:gap-3">
             <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs transition-colors ${
-              answeredCount === KPI_CRITERIA.length 
+              answeredCount === totalQuestions 
                 ? "bg-emerald-600 text-white" 
                 : "bg-blue-50 text-blue-700 border border-blue-200/60"
             }`}>
-              {answeredCount === KPI_CRITERIA.length ? "✓" : `${answeredCount}/10`}
+              {answeredCount === totalQuestions ? "✓" : `${answeredCount}/${totalQuestions}`}
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="text-[11px] sm:text-xs font-bold text-slate-700">
-                  {answeredCount === KPI_CRITERIA.length ? "Đã xong 10/10" : `Đã làm ${answeredCount}/10`}
+                  {answeredCount === totalQuestions ? `Đã xong ${totalQuestions}/${totalQuestions}` : `Đã làm ${answeredCount}/${totalQuestions}`}
                 </p>
                 <span className="text-[10px] text-slate-400 hidden sm:inline">tiêu chí</span>
               </div>
               <div className="w-20 sm:w-36 h-2 bg-slate-100 rounded-full mt-1 overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all duration-300 ${
-                    answeredCount === KPI_CRITERIA.length ? "bg-emerald-500" : "bg-blue-600"
+                    answeredCount === totalQuestions ? "bg-emerald-500" : "bg-blue-600"
                   }`}
-                  style={{ width: `${(answeredCount / KPI_CRITERIA.length) * 100}%` }}
+                  style={{ width: `${(answeredCount / totalQuestions) * 100}%` }}
                 />
               </div>
             </div>
@@ -542,11 +623,11 @@ export default function EvaluationForm({
           {/* Quick Submit button */}
           <button
             onClick={handleSubmit}
-            disabled={answeredCount < KPI_CRITERIA.length || submitting || isLocked}
+            disabled={answeredCount < totalQuestions || submitting || isLocked}
             className={`hidden sm:flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md shrink-0 ${
               isLocked
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
-                : answeredCount === KPI_CRITERIA.length && !submitting
+                : answeredCount === totalQuestions && !submitting
                 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25 cursor-pointer hover:scale-[1.02] active:scale-95"
                 : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed shadow-none"
             }`}
@@ -578,17 +659,17 @@ export default function EvaluationForm({
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 rounded-xl bg-blue-600 text-white font-black text-xs shadow-xs shrink-0">
               {displayMode === "step" 
-                ? activeStep <= 10 
-                  ? `Câu ${activeStep} / 10` 
+                ? activeStep <= totalQuestions 
+                  ? `Câu ${activeStep} / ${totalQuestions}` 
                   : "Hoàn Tất" 
-                : "10 Tiêu Chí"}
+                : `${totalQuestions} Tiêu Chí`}
             </span>
             <span className="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[260px] sm:max-w-md">
               {displayMode === "step"
-                ? activeStep <= 10
-                  ? KPI_CRITERIA[activeStep - 1].title
+                ? activeStep <= totalQuestions
+                  ? currentCriteria[activeStep - 1].title
                   : "Tổng Kết & Ý Kiến Cá Nhân"
-                : "Danh Sách Toàn Bộ 10 Tiêu Chí Đánh Giá"}
+                : `Danh Sách Toàn Bộ ${totalQuestions} Tiêu Chí Đánh Giá ${evaluationType === "MANAGER" ? "(Cấp Quản Lý)" : ""}`}
             </span>
             {isAutoAdvancing && (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full animate-pulse shrink-0">
@@ -619,7 +700,7 @@ export default function EvaluationForm({
                   ? "bg-white text-blue-700 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
-              title="Hiện toàn bộ danh sách 10 câu để cuộn xem liên tục"
+              title={`Hiện toàn bộ danh sách ${totalQuestions} câu để cuộn xem liên tục`}
             >
               📜 Hiện Tất Cả
             </button>
@@ -628,7 +709,7 @@ export default function EvaluationForm({
 
         {/* Stepper Pills for quick jumping */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {KPI_CRITERIA.map((crit, idx) => {
+          {currentCriteria.map((crit, idx) => {
             const stepNum = idx + 1;
             const isDone = scores[crit.id] !== undefined;
             const isCurrent = displayMode === "step" && activeStep === stepNum;
@@ -669,15 +750,15 @@ export default function EvaluationForm({
             type="button"
             onClick={() => {
               if (displayMode === "step") {
-                handleGoToStep(11);
+                handleGoToStep(totalQuestions + 1);
               } else {
                 document.getElementById("feedback-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
               }
             }}
             className={`shrink-0 h-9 sm:h-10 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
-              displayMode === "step" && activeStep === 11
+              displayMode === "step" && activeStep === totalQuestions + 1
                 ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-300 scale-105 z-10"
-                : answeredCount === KPI_CRITERIA.length
+                : answeredCount === totalQuestions
                 ? "bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
                 : "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/60"
             }`}
@@ -692,9 +773,9 @@ export default function EvaluationForm({
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         {displayMode === "step" ? (
           /* STEP MODE (Hiển thị từng câu, tự động chuyển câu tiếp theo khi chọn điểm) */
-          activeStep <= 10 ? (
+          activeStep <= totalQuestions ? (
             (() => {
-              const criteria = KPI_CRITERIA[activeStep - 1];
+              const criteria = currentCriteria[activeStep - 1];
               const currentScore = scores[criteria.id];
               const isAnswered = currentScore !== undefined;
 
@@ -715,7 +796,7 @@ export default function EvaluationForm({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                            Tiêu chí {activeStep} / 10
+                            Tiêu chí {activeStep} / {totalQuestions}
                           </span>
                           {isAnswered && (
                             <span className="text-[11px] sm:text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
@@ -873,7 +954,7 @@ export default function EvaluationForm({
                       )}
                     </div>
 
-                    {activeStep < 10 ? (
+                    {activeStep < totalQuestions ? (
                       <button
                         type="button"
                         onClick={() => handleGoToStep(activeStep + 1)}
@@ -885,7 +966,7 @@ export default function EvaluationForm({
                     ) : (
                       <button
                         type="button"
-                        onClick={() => handleGoToStep(11)}
+                        onClick={() => handleGoToStep(totalQuestions + 1)}
                         className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
                       >
                         <span>Xem lại & Nộp</span>
@@ -897,22 +978,22 @@ export default function EvaluationForm({
               );
             })()
           ) : (
-            /* STEP 11: TỔNG KẾT & HOÀN TẤT NỘP PHIẾU */
+            /* STEP REVIEW: TỔNG KẾT & HOÀN TẤT NỘP PHIẾU */
             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-              {/* Review summary of all 10 criteria */}
+              {/* Review summary of all criteria */}
               <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs">
-                        Bước 11 / 11
+                        Bước {totalQuestions + 1} / {totalQuestions + 1}
                       </span>
                       <h2 className="text-lg font-bold text-slate-900">
-                        Tổng Kết & Hoàn Tất Phiếu Đánh Giá
+                        Tổng Kết & Hoàn Tất Phiếu Đánh Giá {evaluationType === "MANAGER" ? "(Cấp Quản Lý)" : ""}
                       </h2>
                     </div>
                     <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      Kiểm tra lại điểm số 10 tiêu chí trước khi gửi phiếu đánh giá chính thức.
+                      Kiểm tra lại điểm số {totalQuestions} tiêu chí trước khi gửi phiếu đánh giá chính thức.
                     </p>
                   </div>
 
@@ -929,9 +1010,9 @@ export default function EvaluationForm({
                   </div>
                 </div>
 
-                {/* Table review of 10 questions */}
+                {/* Table review of questions */}
                 <div className="mt-4 divide-y divide-slate-100">
-                  {KPI_CRITERIA.map((crit, idx) => {
+                  {currentCriteria.map((crit, idx) => {
                     const sc = scores[crit.id];
                     const isDone = sc !== undefined;
                     return (
@@ -969,11 +1050,11 @@ export default function EvaluationForm({
                 </div>
               </div>
 
-              {/* Question 11: Ý kiến cá nhân */}
+              {/* Feedback Section */}
               <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
-                    11
+                    {totalQuestions + 1}
                   </span>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900">
                     Ý kiến cá nhân & Đề xuất cải tiến (Không bắt buộc)
@@ -996,22 +1077,22 @@ export default function EvaluationForm({
               <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
                 <button
                   type="button"
-                  onClick={() => handleGoToStep(10)}
+                  onClick={() => handleGoToStep(totalQuestions)}
                   className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span>Quay lại Câu 10</span>
+                  <span>Quay lại Câu {totalQuestions}</span>
                 </button>
 
                 <button
                   type="submit"
-                  disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
+                  disabled={answeredCount < totalQuestions || submitting || (isLocked && !isEditing)}
                   className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                     isEditing
                       ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
                       : isLocked
                       ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                      : answeredCount === KPI_CRITERIA.length && !submitting
+                      : answeredCount === totalQuestions && !submitting
                       ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xl shadow-blue-500/30 cursor-pointer hover:scale-[1.02] active:scale-95"
                       : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                   }`}
@@ -1031,7 +1112,7 @@ export default function EvaluationForm({
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Nộp Phiếu Đánh Giá KPI (10/10)</span>
+                      <span>Nộp Phiếu Đánh Giá KPI ({totalQuestions}/{totalQuestions})</span>
                     </>
                   )}
                 </button>
@@ -1039,9 +1120,9 @@ export default function EvaluationForm({
             </div>
           )
         ) : (
-          /* ALL MODE (Hiển thị toàn bộ danh sách 10 câu liên tục) */
+          /* ALL MODE (Hiển thị toàn bộ danh sách câu hỏi liên tục) */
           <>
-            {KPI_CRITERIA.map((criteria, index) => {
+            {currentCriteria.map((criteria, index) => {
               const currentScore = scores[criteria.id];
               const isAnswered = currentScore !== undefined;
 
@@ -1193,11 +1274,11 @@ export default function EvaluationForm({
               );
             })}
 
-            {/* Question 11: Personal Feedback / Suggestions */}
+            {/* Final Question: Personal Feedback / Suggestions */}
             <div id="feedback-section" className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs">
               <div className="flex items-center gap-2 mb-2">
                 <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
-                  11
+                  {totalQuestions + 1}
                 </span>
                 <h2 className="text-base sm:text-lg font-bold text-slate-900">
                   Ý kiến cá nhân & Đề xuất cải tiến (Không bắt buộc)
@@ -1235,21 +1316,21 @@ export default function EvaluationForm({
                     ? "Bạn đang ở chế độ chỉnh sửa. Nhấn nút bên phải để lưu cập nhật phiếu đánh giá."
                     : isLocked
                     ? "Trong tháng này bạn đã hoàn tất đánh giá cho nhân sự này. Theo quy định không được đánh giá tiếp."
-                    : answeredCount === KPI_CRITERIA.length
-                    ? "Bạn đã hoàn thành đủ 10/10 tiêu chí. Sẵn sàng gửi bài."
-                    : `Còn thiếu ${KPI_CRITERIA.length - answeredCount} tiêu chí chưa hoàn thành.`}
+                    : answeredCount === totalQuestions
+                    ? `Bạn đã hoàn thành đủ ${totalQuestions}/${totalQuestions} tiêu chí. Sẵn sàng gửi bài.`
+                    : `Còn thiếu ${totalQuestions - answeredCount} tiêu chí chưa hoàn thành.`}
                 </p>
               </div>
 
               <button
                 type="submit"
-                disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
+                disabled={answeredCount < totalQuestions || submitting || (isLocked && !isEditing)}
                 className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                   isEditing
                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
                     : isLocked
                     ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                    : answeredCount === KPI_CRITERIA.length && !submitting
+                    : answeredCount === totalQuestions && !submitting
                     ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
                     : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                 }`}
@@ -1269,7 +1350,7 @@ export default function EvaluationForm({
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Nộp Phiếu Đánh Giá KPI</span>
+                    <span>Nộp Phiếu Đánh Giá KPI ({totalQuestions} Tiêu Chí)</span>
                   </>
                 )}
               </button>
@@ -1300,6 +1381,14 @@ export default function EvaluationForm({
               <div className="flex justify-between items-center py-1 border-b border-slate-200/60 text-xs">
                 <span className="text-slate-500">Đối tượng:</span>
                 <span className="font-semibold text-slate-800">{submittedRecord.targetName}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-200/60 text-xs">
+                <span className="text-slate-500">Biểu mẫu áp dụng:</span>
+                <span className="font-bold text-indigo-700">
+                  {submittedRecord.evaluationType === "MANAGER"
+                    ? "👔 Cấp Quản Lý (7 Tiêu Chí)"
+                    : "👤 Nhân Viên (10 Tiêu Chí)"}
+                </span>
               </div>
               <div className="flex justify-between items-center py-1 border-b border-slate-200/60 text-xs">
                 <span className="text-slate-500">Tổng điểm tự đánh giá:</span>

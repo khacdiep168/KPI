@@ -64,6 +64,7 @@ export async function syncFromSupabase(): Promise<{
       const mappedEvals: EvaluationRecord[] = evalData.map((e: any) => ({
         id: e.id,
         period: e.period,
+        evaluationType: (e.evaluation_type as any) || "STAFF",
         evaluatorManv: e.evaluator_manv,
         evaluatorName: e.evaluator_name,
         evaluatorDept: e.evaluator_dept,
@@ -143,6 +144,7 @@ export async function pushEvaluationToSupabase(e: EvaluationRecord): Promise<voi
     await supabase.from("evaluations").upsert({
       id: e.id,
       period: e.period,
+      evaluation_type: e.evaluationType || "STAFF",
       evaluator_manv: e.evaluatorManv,
       evaluator_name: e.evaluatorName,
       evaluator_dept: e.evaluatorDept,
