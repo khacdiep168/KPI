@@ -25,8 +25,10 @@ import {
   Building,
   Check,
   Calendar,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Printer
 } from "lucide-react";
+import IndividualEvaluationPrintModal from "./IndividualEvaluationPrintModal";
 
 interface ManagerReviewProps {
   currentUser: User;
@@ -46,6 +48,7 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
   const [selectedDept, setSelectedDept] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [printRecord, setPrintRecord] = useState<EvaluationRecord | null>(null);
 
   // Editing evaluation state
   const [editingRecord, setEditingRecord] = useState<EvaluationRecord | null>(null);
@@ -283,17 +286,27 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => handleOpenEdit(rec)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors ${
-                            isManagerReviewed
-                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                              : "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
-                          }`}
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>{isManagerReviewed ? "Sửa Điểm" : "Chấm Điểm"}</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPrintRecord(rec)}
+                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 transition-colors cursor-pointer"
+                            title="In phiếu đánh giá cá nhân (A4 / PDF)"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEdit(rec)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                              isManagerReviewed
+                                ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                : "bg-blue-600 hover:bg-blue-700 text-white shadow-xs"
+                            }`}
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>{isManagerReviewed ? "Sửa Điểm" : "Chấm Điểm"}</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -400,7 +413,12 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
         </div>
       )}
 
-
+      {/* Individual Evaluation Print Modal */}
+      <IndividualEvaluationPrintModal
+        isOpen={printRecord !== null}
+        onClose={() => setPrintRecord(null)}
+        evaluation={printRecord}
+      />
     </div>
   );
 }

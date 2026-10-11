@@ -22,11 +22,17 @@ import {
   ChevronRight,
   User as UserIcon,
   Settings,
-  UserPlus
+  UserPlus,
+  Users,
+  Calendar,
+  Database
 } from "lucide-react";
 import ChangePasswordModal from "./ChangePasswordModal";
 import CompanySettingsModal from "./CompanySettingsModal";
 import AddEmployeeModal from "./AddEmployeeModal";
+import UserManagementModal from "./UserManagementModal";
+import PeriodManagementModal from "./PeriodManagementModal";
+import BackupRestoreModal from "./BackupRestoreModal";
 
 interface NavbarProps {
   currentUser: User;
@@ -45,6 +51,9 @@ export default function Navbar({
   const [showChangePassModal, setShowChangePassModal] = useState(false);
   const [showCompanyModal, setShowCompanyModal] = useState(false);
   const [showAddEmpModal, setShowAddEmpModal] = useState(false);
+  const [showUserManageModal, setShowUserManageModal] = useState(false);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false);
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
 
   useEffect(() => {
@@ -299,7 +308,30 @@ export default function Navbar({
                 </button>
               )}
 
-              {/* 2. Nút Thêm nhân viên (Dành cho Admin / Quản lý) */}
+              {/* 2. Nút Quản Lý Nhân Sự (Dành cho Admin / Quản lý) */}
+              {canAddEmployee && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowUserManageModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100/80 border border-indigo-200 text-indigo-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/25 shrink-0">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-indigo-950 text-sm">Quản Lý Nhân Sự & Phân Quyền</p>
+                      <p className="text-xs text-indigo-700/80 font-normal mt-0.5">Xem danh sách, sửa, reset MK về 123, khóa/mở khóa</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-indigo-500 shrink-0" />
+                </button>
+              )}
+
+              {/* 3. Nút Thêm nhân viên nhanh */}
               {canAddEmployee && (
                 <button
                   type="button"
@@ -314,7 +346,7 @@ export default function Navbar({
                       <UserPlus className="w-5 h-5" />
                     </div>
                     <div className="text-left">
-                      <p className="font-extrabold text-emerald-950 text-sm">Thêm Nhân Viên</p>
+                      <p className="font-extrabold text-emerald-950 text-sm">Thêm Nhân Viên Mới</p>
                       <p className="text-xs text-emerald-700/80 font-normal mt-0.5">Tạo tài khoản mới và phân quyền nhân sự</p>
                     </div>
                   </div>
@@ -322,7 +354,53 @@ export default function Navbar({
                 </button>
               )}
 
-              {/* 3. Nút Đổi mật khẩu cá nhân */}
+              {/* 4. Nút Quản Lý Kỳ Đánh Giá & Hạn Nộp (Dành cho Admin) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowPeriodModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-purple-50 hover:bg-purple-100/80 border border-purple-200 text-purple-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-md shadow-purple-500/25 shrink-0">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-purple-950 text-sm">Quản Lý Kỳ Đánh Giá & Hạn Nộp</p>
+                      <p className="text-xs text-purple-700/80 font-normal mt-0.5">Mở/đóng kỳ, cài đặt deadline chấm điểm</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-purple-500 shrink-0" />
+                </button>
+              )}
+
+              {/* 5. Nút Sao Lưu & Phục Hồi Dữ Liệu (Dành cho Admin) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowBackupModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-sky-50 hover:bg-sky-100/80 border border-sky-200 text-sky-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-md shadow-sky-500/25 shrink-0">
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-sky-950 text-sm">Sao Lưu & Phục Hồi Dữ Liệu</p>
+                      <p className="text-xs text-sky-700/80 font-normal mt-0.5">Tải file backup JSON, khôi phục, đặt lại dữ liệu demo</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-sky-500 shrink-0" />
+                </button>
+              )}
+
+              {/* 6. Nút Đổi mật khẩu cá nhân */}
               <button
                 type="button"
                 onClick={() => {
@@ -343,7 +421,7 @@ export default function Navbar({
                 <ChevronRight className="w-5 h-5 text-blue-500 shrink-0" />
               </button>
 
-              {/* 4. Nút Đăng xuất tài khoản */}
+              {/* 7. Nút Đăng xuất tài khoản */}
               <button
                 type="button"
                 onClick={handleLogout}
@@ -508,6 +586,25 @@ export default function Navbar({
         isOpen={showAddEmpModal}
         onClose={() => setShowAddEmpModal(false)}
         defaultDept={currentUser.dept}
+      />
+
+      {/* User Management Modal */}
+      <UserManagementModal
+        currentUser={currentUser}
+        isOpen={showUserManageModal}
+        onClose={() => setShowUserManageModal(false)}
+      />
+
+      {/* Period Management Modal */}
+      <PeriodManagementModal
+        isOpen={showPeriodModal}
+        onClose={() => setShowPeriodModal(false)}
+      />
+
+      {/* Backup and Restore Modal */}
+      <BackupRestoreModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
       />
     </header>
   );

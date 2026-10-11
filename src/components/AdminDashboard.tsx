@@ -20,8 +20,10 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Calendar,
-  X
+  X,
+  Printer
 } from "lucide-react";
+import IndividualEvaluationPrintModal from "./IndividualEvaluationPrintModal";
 
 interface AdminDashboardProps {
   currentUser: User;
@@ -44,6 +46,7 @@ export default function AdminDashboard({ currentUser }: AdminDashboardProps) {
   const [councilRecord, setCouncilRecord] = useState<EvaluationRecord | null>(null);
   const [councilScore, setCouncilScore] = useState<number>(85);
   const [councilFeedback, setCouncilFeedback] = useState<string>("");
+  const [printRecord, setPrintRecord] = useState<EvaluationRecord | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -388,17 +391,27 @@ export default function AdminDashboard({ currentUser }: AdminDashboardProps) {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => handleOpenCouncilApprove(rec)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors ${
-                          isApproved
-                            ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                            : "bg-purple-600 hover:bg-purple-700 text-white shadow-xs"
-                        }`}
-                      >
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        <span>{isApproved ? "Sửa Điểm HĐ" : "Chốt Điểm HĐ"}</span>
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setPrintRecord(rec)}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-purple-700 transition-colors cursor-pointer"
+                          title="In phiếu đánh giá cá nhân (A4 / PDF)"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenCouncilApprove(rec)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                            isApproved
+                              ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                              : "bg-purple-600 hover:bg-purple-700 text-white shadow-xs"
+                          }`}
+                        >
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          <span>{isApproved ? "Sửa Điểm HĐ" : "Chốt Điểm HĐ"}</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -515,7 +528,12 @@ export default function AdminDashboard({ currentUser }: AdminDashboardProps) {
         document.body
       )}
 
-
+      {/* Individual Evaluation Print Modal */}
+      <IndividualEvaluationPrintModal
+        isOpen={printRecord !== null}
+        onClose={() => setPrintRecord(null)}
+        evaluation={printRecord}
+      />
     </div>
   );
 }

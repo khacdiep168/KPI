@@ -7,6 +7,7 @@ export interface User {
   title: string;
   password?: string;
   role: Role;
+  status?: "ACTIVE" | "INACTIVE";
 }
 
 export type Classification = "Xuất sắc" | "Giỏi" | "Khá" | "Trung Bình" | "Yếu";

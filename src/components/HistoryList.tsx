@@ -20,8 +20,10 @@ import {
   Search,
   Filter, 
   FileSpreadsheet,
-  Lock
+  Lock,
+  Printer
 } from "lucide-react";
+import IndividualEvaluationPrintModal from "./IndividualEvaluationPrintModal";
 
 interface HistoryListProps {
   currentUser: User;
@@ -41,6 +43,7 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
   const [typeFilter, setTypeFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedRecord, setSelectedRecord] = useState<EvaluationRecord | null>(null);
+  const [printRecord, setPrintRecord] = useState<EvaluationRecord | null>(null);
 
   const filteredList = userEvaluations.filter((e) => {
     if (selectedPeriod !== "ALL" && e.period !== selectedPeriod) return false;
@@ -243,6 +246,15 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
                     )}
 
                   <button
+                    onClick={() => setPrintRecord(item)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors shrink-0 cursor-pointer"
+                    title="In hoặc xuất file PDF phiếu đánh giá cá nhân chuẩn A4"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">In Phiếu (A4)</span>
+                  </button>
+
+                  <button
                     onClick={() => setSelectedRecord(item)}
                     className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 text-xs font-semibold transition-colors shrink-0"
                   >
@@ -362,7 +374,14 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
               </div>
             )}
 
-            <div className="mt-6 text-right">
+            <div className="mt-6 flex items-center justify-between">
+              <button
+                onClick={() => setPrintRecord(selectedRecord)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>In Phiếu Đánh Giá (A4 / PDF)</span>
+              </button>
               <button
                 onClick={() => setSelectedRecord(null)}
                 className="px-6 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors"
@@ -373,6 +392,13 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
           </div>
         </div>
       )}
+
+      {/* Individual Evaluation Print Modal */}
+      <IndividualEvaluationPrintModal
+        isOpen={printRecord !== null}
+        onClose={() => setPrintRecord(null)}
+        evaluation={printRecord}
+      />
     </div>
   );
 }

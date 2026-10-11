@@ -253,6 +253,7 @@ export function addUser(user: User): User {
     title: user.title.trim() || "NHÂN VIÊN",
     role: user.role || "User",
     password: user.password?.trim() || "123456",
+    status: user.status || "ACTIVE",
   };
   users.push(newUser);
   if (typeof window !== "undefined") {
@@ -260,6 +261,99 @@ export function addUser(user: User): User {
   }
   pushUserToSupabase(newUser);
   return newUser;
+}
+
+export function updateUser(manv: string, updates: Partial<User>): User | null {
+  const users = getUsers();
+  const raw = manv.trim().toUpperCase();
+  const idx = users.findIndex((u) => u.manv.trim().toUpperCase() === raw);
+  if (idx === -1) return null;
+
+  const updated: User = {
+    ...users[idx],
+    ...updates,
+    manv: users[idx].manv, // Không thay đổi MANV
+  };
+  users[idx] = updated;
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+  }
+  pushUserToSupabase(updated);
+  return updated;
+}
+
+export function deleteUser(manv: string): boolean {
+  const users = getUsers();
+  const raw = manv.trim().toUpperCase();
+  const filtered = users.filter((u) => u.manv.trim().toUpperCase() !== raw);
+  if (filtered.length === users.length) return false;
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(filtered));
+  }
+  return true;
+}
+
+export function resetUserPasswordToDefault(manv: string): boolean {
+  return updateUser(manv, { password: "123" }) !== null;
+}
+
+export function toggleUserStatus(manv: string): User | null {
+  const users = getUsers();
+  const raw = manv.trim().toUpperCase();
+  const user = users.find((u) => u.manv.trim().toUpperCase() === raw);
+  if (!user) return null;
+  const newStatus = user.status === "INACTIVE" ? "ACTIVE" : "INACTIVE";
+  return updateUser(manv, { status: newStatus });
+}
+
+export function importUsers(importedList: Partial<User>[]): { added: number; updated: number; total: number } {
+  const users = getUsers();
+  const userMap = new Map<string, User>();
+  users.forEach((u) => userMap.set(u.manv.trim().toUpperCase(), u));
+
+  let added = 0;
+  let updated = 0;
+
+  importedList.forEach((raw) => {
+    if (!raw.manv || !raw.name) return;
+    const key = raw.manv.trim().toUpperCase();
+    if (userMap.has(key)) {
+      const existing = userMap.get(key)!;
+      const upd: User = {
+        ...existing,
+        name: raw.name.trim() || existing.name,
+        dept: raw.dept?.trim() || existing.dept,
+        title: raw.title?.trim() || existing.title,
+        role: raw.role || existing.role,
+        status: raw.status || existing.status || "ACTIVE",
+      };
+      userMap.set(key, upd);
+      updated++;
+      pushUserToSupabase(upd);
+    } else {
+      const newUser: User = {
+        manv: key,
+        name: raw.name.trim(),
+        dept: raw.dept?.trim() || "VẬN TẢI",
+        title: raw.title?.trim() || "NHÂN VIÊN",
+        role: raw.role || "User",
+        password: raw.password?.trim() || "123",
+        status: raw.status || "ACTIVE",
+      };
+      userMap.set(key, newUser);
+      added++;
+      pushUserToSupabase(newUser);
+    }
+  });
+
+  const merged = Array.from(userMap.values());
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
+  }
+
+  return { added, updated, total: merged.length };
 }
 
 export function canUserManageAll(user: User): boolean {
@@ -328,6 +422,9 @@ export function getManagedDepartments(user: User): string[] | "ALL" {
 
 export function getVisibleColleaguesForEvaluation(currentUser: User): User[] {
   const allUsers = getUsers();
+  // Chỉ hiển thị các nhân viên đang làm việc (ACTIVE), ẩn nhân viên đã nghỉ (INACTIVE)
+  const activeUsers = allUsers.filter((u) => u.status !== "INACTIVE");
+
   const isManagerOrAdmin = 
     currentUser.role === "Admin" || 
     currentUser.role === "Manager" || 
@@ -338,17 +435,17 @@ export function getVisibleColleaguesForEvaluation(currentUser: User): User[] {
   if (isManagerOrAdmin) {
     const scope = getManagedDepartments(currentUser);
     if (scope === "ALL") {
-      return allUsers.filter((u) => u.manv !== currentUser.manv);
+      return activeUsers.filter((u) => u.manv !== currentUser.manv);
     }
     const normalizedScope = scope.map((d) => d.trim().toUpperCase());
-    return allUsers.filter(
+    return activeUsers.filter(
       (u) => u.manv !== currentUser.manv && normalizedScope.includes(u.dept.trim().toUpperCase())
     );
   }
 
   // 2. Nhân viên thông thường (User): Bộ phận nào chỉ thấy nhân viên bộ phận đó
   const userDept = (currentUser.dept || "").trim().toUpperCase();
-  return allUsers.filter(
+  return activeUsers.filter(
     (u) => u.manv !== currentUser.manv && (u.dept || "").trim().toUpperCase() === userDept
   );
 }
@@ -516,6 +613,112 @@ export function getAllPeriods(): { monthYear: string; name: string }[] {
       name,
     }))
     .sort((a, b) => comparePeriodsDesc(a.monthYear, b.monthYear));
+}
+
+export function savePeriod(period: KpiPeriod): KpiPeriod {
+  const periods = getPeriods();
+  const exists = periods.some((p) => p.monthYear === period.monthYear || p.id === period.id);
+  if (exists) {
+    throw new Error(`Kỳ đánh giá "${period.name}" (${period.monthYear}) đã tồn tại trong hệ thống!`);
+  }
+  periods.unshift(period);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(periods));
+  }
+  return period;
+}
+
+export function updatePeriod(id: string, updates: Partial<KpiPeriod>): KpiPeriod | null {
+  const periods = getPeriods();
+  const idx = periods.findIndex((p) => p.id === id || p.monthYear === id);
+  if (idx === -1) return null;
+  const updated: KpiPeriod = {
+    ...periods[idx],
+    ...updates,
+  };
+  periods[idx] = updated;
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(periods));
+  }
+  return updated;
+}
+
+export function deletePeriod(id: string): boolean {
+  const periods = getPeriods();
+  const filtered = periods.filter((p) => p.id !== id && p.monthYear !== id);
+  if (filtered.length === periods.length) return false;
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(filtered));
+  }
+  return true;
+}
+
+export interface SystemBackupPayload {
+  version: string;
+  exportedAt: string;
+  companyConfig: any;
+  users: User[];
+  evaluations: EvaluationRecord[];
+  periods: KpiPeriod[];
+}
+
+export function exportSystemBackup(): SystemBackupPayload {
+  return {
+    version: "2.0",
+    exportedAt: new Date().toISOString(),
+    companyConfig: getCompanyConfig(),
+    users: getUsers(),
+    evaluations: getEvaluations(),
+    periods: getPeriods(),
+  };
+}
+
+export function importSystemBackup(payload: any): { success: boolean; message: string; counts?: any } {
+  if (!payload || typeof payload !== "object") {
+    return { success: false, message: "File sao lưu không đúng định dạng JSON hợp lệ." };
+  }
+  if (!Array.isArray(payload.users) && !Array.isArray(payload.evaluations)) {
+    return { success: false, message: "Dữ liệu sao lưu thiếu cấu trúc Users hoặc Evaluations." };
+  }
+
+  try {
+    if (typeof window !== "undefined") {
+      if (Array.isArray(payload.users) && payload.users.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(payload.users));
+        payload.users.forEach((u: User) => pushUserToSupabase(u));
+      }
+      if (Array.isArray(payload.evaluations)) {
+        localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(payload.evaluations));
+        payload.evaluations.forEach((e: EvaluationRecord) => pushEvaluationToSupabase(e));
+      }
+      if (Array.isArray(payload.periods) && payload.periods.length > 0) {
+        localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(payload.periods));
+      }
+      if (payload.companyConfig) {
+        localStorage.setItem("tkv_kpi_company_config", JSON.stringify(payload.companyConfig));
+      }
+    }
+
+    return {
+      success: true,
+      message: "Khôi phục dữ liệu hệ thống thành công!",
+      counts: {
+        users: payload.users?.length || 0,
+        evaluations: payload.evaluations?.length || 0,
+        periods: payload.periods?.length || 0,
+      },
+    };
+  } catch (err: any) {
+    return { success: false, message: `Lỗi khôi phục: ${err.message}` };
+  }
+}
+
+export function resetAllDataToDefault(): void {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(INITIAL_EVALUATIONS));
+    localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(INITIAL_PERIODS));
+  }
 }
 
 export function getDepartments(): string[] {
