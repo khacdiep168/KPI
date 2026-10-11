@@ -8,6 +8,7 @@ import {
   getManagedDepartments, 
   canUserManageAll,
   exportAnnualReportToExcel,
+  exportDepartmentAnnualReportToExcel,
   AnnualReportData
 } from "@/lib/storage";
 import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
@@ -28,7 +29,9 @@ import {
   Sparkles,
   BarChart3,
   LayoutGrid,
-  Table
+  Table,
+  Building,
+  Filter
 } from "lucide-react";
 
 interface AnnualReportProps {
@@ -66,11 +69,47 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
     return allUsers.filter((u) => u.manv === currentUser.manv);
   }, [allUsers, currentUser, isSuperManager, managedDepts]);
 
+  // Available departments from viewableUsers
+  const availableDepartments = useMemo(() => {
+    const depts = new Set<string>();
+    viewableUsers.forEach((u) => {
+      if (u.dept && u.dept.trim()) {
+        depts.add(u.dept.trim());
+      }
+    });
+    return Array.from(depts).sort((a, b) => a.localeCompare(b, "vi"));
+  }, [viewableUsers]);
+
+  // Selected department filter
+  const [selectedDept, setSelectedDept] = useState<string>("ALL");
+
+  // Employees in selected department
+  const usersByDept = useMemo(() => {
+    if (selectedDept === "ALL") return viewableUsers;
+    return viewableUsers.filter(
+      (u) => (u.dept || "").trim().toUpperCase() === selectedDept.trim().toUpperCase()
+    );
+  }, [viewableUsers, selectedDept]);
+
   // Selected employee
   const [selectedManv, setSelectedManv] = useState<string>(currentUser.manv);
   const selectedUser = useMemo(() => {
-    return viewableUsers.find((u) => u.manv === selectedManv) || viewableUsers[0] || currentUser;
-  }, [viewableUsers, selectedManv, currentUser]);
+    const inDept = usersByDept.find((u) => u.manv === selectedManv);
+    if (inDept) return inDept;
+    return usersByDept[0] || viewableUsers.find((u) => u.manv === selectedManv) || currentUser;
+  }, [usersByDept, viewableUsers, selectedManv, currentUser]);
+
+  const handleDeptChange = (newDept: string) => {
+    setSelectedDept(newDept);
+    if (newDept !== "ALL") {
+      const deptUsers = viewableUsers.filter(
+        (u) => (u.dept || "").trim().toUpperCase() === newDept.trim().toUpperCase()
+      );
+      if (deptUsers.length > 0 && !deptUsers.some((u) => u.manv === selectedManv)) {
+        setSelectedManv(deptUsers[0].manv);
+      }
+    }
+  };
 
   // Search employee query
   const [searchEmployeeQuery, setSearchEmployeeQuery] = useState("");
@@ -223,6 +262,17 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
     exportAnnualReportToExcel(annualData);
   };
 
+  // Export Department Excel handler
+  const handleExportDeptExcel = () => {
+    const targetDeptName = selectedDept === "ALL" ? "Toan_Cong_Ty" : selectedDept;
+    exportDepartmentAnnualReportToExcel({
+      deptName: targetDeptName,
+      year: selectedYear,
+      employees: usersByDept,
+      allEvaluations,
+    });
+  };
+
   // Print / Save PDF handler
   const handlePrintPDF = () => {
     window.print();
@@ -230,15 +280,15 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
 
   // Filter user list for dropdown
   const filteredUsers = useMemo(() => {
-    if (!searchEmployeeQuery.trim()) return viewableUsers;
+    if (!searchEmployeeQuery.trim()) return usersByDept;
     const q = searchEmployeeQuery.toLowerCase();
-    return viewableUsers.filter(
+    return usersByDept.filter(
       (u) =>
         u.name.toLowerCase().includes(q) ||
         u.manv.toLowerCase().includes(q) ||
         u.dept.toLowerCase().includes(q)
     );
-  }, [viewableUsers, searchEmployeeQuery]);
+  }, [usersByDept, searchEmployeeQuery]);
 
   return (
     <div className="space-y-6">
@@ -291,13 +341,24 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {selectedDept !== "ALL" && usersByDept.length > 1 && (
+            <button
+              onClick={handleExportDeptExcel}
+              className="flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs transition-colors shadow-xs"
+              title={`Xuất bảng tổng hợp 12 tháng của toàn bộ ${usersByDept.length} nhân sự thuộc bộ phận ${selectedDept}`}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Xuất Cả BP ({usersByDept.length} NS)</span>
+            </button>
+          )}
+
           <button
             onClick={handleExportExcel}
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs"
             title="Xuất bảng báo cáo năm sang file Excel (.xlsx) chuẩn"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất File Excel (.xlsx)</span>
+            <span>Xuất Excel Cá Nhân</span>
           </button>
 
           <button
@@ -312,11 +373,41 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
       </div>
 
       {/* Filter Selector Bar (Hidden when printing) */}
-      <div className="no-print bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="no-print bg-white rounded-2xl p-4 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center gap-4">
+        {/* Department Filter (Only shown if multiple departments are viewable) */}
+        {availableDepartments.length > 1 && (
+          <div className="w-full md:w-64">
+            <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+              <Building className="w-3.5 h-3.5 text-blue-500" />
+              Lọc theo bộ phận:
+            </label>
+            <div className="relative">
+              <select
+                value={selectedDept}
+                onChange={(e) => handleDeptChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-800"
+              >
+                <option value="ALL">-- Tất cả bộ phận ({viewableUsers.length} NS) --</option>
+                {availableDepartments.map((d) => {
+                  const count = viewableUsers.filter(
+                    (u) => (u.dept || "").trim().toUpperCase() === d.toUpperCase()
+                  ).length;
+                  return (
+                    <option key={d} value={d}>
+                      {d} ({count} nhân sự)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Employee Selector */}
         {viewableUsers.length > 1 ? (
           <div className="flex-1 w-full">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
+            <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+              <UserIcon className="w-3.5 h-3.5 text-blue-500" />
               Chọn nhân viên xem báo cáo:
             </label>
             <div className="relative">
@@ -325,11 +416,15 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
                 onChange={(e) => setSelectedManv(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500 text-slate-800"
               >
-                {filteredUsers.map((u) => (
-                  <option key={u.manv} value={u.manv}>
-                    [{u.manv}] {u.name} — {u.dept} ({u.title || "Nhân viên"})
-                  </option>
-                ))}
+                {filteredUsers.length === 0 ? (
+                  <option value="" disabled>Không có nhân viên trong bộ phận này</option>
+                ) : (
+                  filteredUsers.map((u) => (
+                    <option key={u.manv} value={u.manv}>
+                      [{u.manv}] {u.name} — {u.dept} ({u.title || "Nhân viên"})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
@@ -343,8 +438,9 @@ export default function AnnualReport({ currentUser }: AnnualReportProps) {
         )}
 
         {/* Year Selector */}
-        <div className="w-full sm:w-44">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">
+        <div className="w-full md:w-44">
+          <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-blue-500" />
             Năm đánh giá:
           </label>
           <div className="relative">

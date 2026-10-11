@@ -1067,3 +1067,104 @@ export function exportAnnualReportToExcel(params: AnnualReportData): void {
   const fname = `Bao_Cao_KPI_Nam_${year}_${employee.manv}_${employee.name}.xlsx`;
   downloadWorkbookAsXLSX(wb, fname);
 }
+
+export function exportDepartmentAnnualReportToExcel(params: {
+  deptName: string;
+  year: number;
+  employees: User[];
+  allEvaluations: EvaluationRecord[];
+}): void {
+  const { deptName, year, employees, allEvaluations } = params;
+  const config = getCompanyConfig();
+
+  const wb = XLSX.utils.book_new();
+
+  // Summary Table of all employees in the department
+  const summaryAoa: any[][] = [];
+  if (config.parentOrg) summaryAoa.push([config.parentOrg]);
+  summaryAoa.push([config.companyName]);
+  if (config.address) summaryAoa.push([config.address]);
+  summaryAoa.push([]);
+  summaryAoa.push([`BẢNG TỔNG HỢP KPI NĂM ${year} - BỘ PHẬN: ${deptName.toUpperCase()}`]);
+  summaryAoa.push([`Tổng số nhân sự: ${employees.length}`]);
+  summaryAoa.push([]);
+
+  // Header row
+  const header = [
+    "STT",
+    "Mã NV",
+    "Họ và Tên",
+    "Chức Vụ",
+    "T1", "T2", "T3", "T4", "T5", "T6",
+    "T7", "T8", "T9", "T10", "T11", "T12",
+    "Số Kỳ ĐG",
+    "Điểm TB Năm",
+    "Xếp Loại Năm"
+  ];
+  summaryAoa.push(header);
+
+  employees.forEach((emp, idx) => {
+    const empEvals = allEvaluations.filter((e) => {
+      const match = 
+        e.targetManv?.toUpperCase() === emp.manv.toUpperCase() ||
+        (e.evaluatorManv?.toUpperCase() === emp.manv.toUpperCase() && (!e.targetManv || e.targetManv === e.evaluatorManv));
+      if (!match) return false;
+      const parts = e.period?.split(/[-/]/);
+      return parts && parts.length === 2 && parseInt(parts[1], 10) === year;
+    });
+
+    const monthScores: (number | string)[] = [];
+    const validScores: number[] = [];
+
+    for (let m = 1; m <= 12; m++) {
+      const rec = empEvals.find((e) => {
+        const parts = e.period?.split(/[-/]/);
+        return parts && parseInt(parts[0], 10) === m;
+      });
+      if (rec) {
+        const finalScore = rec.councilScore ?? rec.managerScore ?? rec.selfTotalScore;
+        if (finalScore !== null && finalScore !== undefined) {
+          monthScores.push(finalScore);
+          validScores.push(finalScore);
+        } else {
+          monthScores.push("--");
+        }
+      } else {
+        monthScores.push("--");
+      }
+    }
+
+    const avgScore = validScores.length > 0
+      ? Number((validScores.reduce((a, b) => a + b, 0) / validScores.length).toFixed(1))
+      : "--";
+    const rank = typeof avgScore === "number" ? calculateClassification(avgScore) : "--";
+
+    summaryAoa.push([
+      idx + 1,
+      emp.manv,
+      emp.name,
+      emp.title || "Nhân viên",
+      ...monthScores,
+      validScores.length,
+      avgScore,
+      rank
+    ]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(summaryAoa);
+  ws["!cols"] = [
+    { wch: 6 },
+    { wch: 12 },
+    { wch: 25 },
+    { wch: 18 },
+    ...Array(12).fill({ wch: 7 }),
+    { wch: 10 },
+    { wch: 14 },
+    { wch: 14 }
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, "TongHop_BoPhan");
+
+  const cleanDept = deptName.replace(/[^a-zA-Z0-9_\u00C0-\u1EF9]/g, "_");
+  const fname = `Bao_Cao_KPI_Nam_${year}_BoPhan_${cleanDept}.xlsx`;
+  downloadWorkbookAsXLSX(wb, fname);
+}
