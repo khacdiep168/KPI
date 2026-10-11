@@ -29,7 +29,10 @@ import {
   ArrowRight, 
   Lock, 
   Edit, 
-  Info 
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  Check
 } from "lucide-react";
 
 interface EvaluationFormProps {
@@ -105,8 +108,29 @@ export default function EvaluationForm({
     return getEvaluatedTargetManvs(currentUser.manv, activePeriod.monthYear);
   }, [currentUser.manv, activePeriod.monthYear, existingRecord, submittedRecord]);
 
+  // Step-by-step navigation state (Câu 1 đến Câu 10, và Bước 11 là Tổng kết & Nộp phiếu)
+  const [activeStep, setActiveStep] = useState<number>(1);
+  const [displayMode, setDisplayMode] = useState<"step" | "all">("step");
+  const [isAutoAdvancing, setIsAutoAdvancing] = useState<boolean>(false);
+  const advanceTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (advanceTimerRef.current) {
+        clearTimeout(advanceTimerRef.current);
+      }
+    };
+  }, []);
+
   // Check if evaluation exists when targetManv or activePeriod changes
   useEffect(() => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+    setIsAutoAdvancing(false);
+    setActiveStep(1);
+
     const existing = getEvaluationForTarget(currentUser.manv, targetManv, activePeriod.monthYear);
     const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
     const managerAlreadyReviewed = existing?.managerScore !== null && existing?.managerScore !== undefined;
@@ -148,24 +172,55 @@ export default function EvaluationForm({
     return KPI_CRITERIA.filter((c) => scores[c.id] !== undefined).length;
   }, [scores]);
 
-  const handleSelectOption = (questionId: string, points: number) => {
+  // Tự động chuyển câu tiếp theo sau khi nhân viên chọn điểm (450ms)
+  const triggerAutoAdvance = (fromStep: number) => {
+    if (displayMode !== "step" || isLocked) return;
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+    setIsAutoAdvancing(true);
+    advanceTimerRef.current = setTimeout(() => {
+      setIsAutoAdvancing(false);
+      if (fromStep < 10) {
+        setActiveStep(fromStep + 1);
+      } else if (fromStep === 10) {
+        setActiveStep(11); // Tự động chuyển đến màn hình Tổng kết & Ý kiến cá nhân
+      }
+    }, 450);
+  };
+
+  const handleGoToStep = (step: number) => {
+    if (advanceTimerRef.current) {
+      clearTimeout(advanceTimerRef.current);
+    }
+    setIsAutoAdvancing(false);
+    setActiveStep(step);
+  };
+
+  const handleSelectOption = (questionId: string, points: number, stepNum?: number) => {
     if (isLocked) return;
     setScores((prev) => ({
       ...prev,
       [questionId]: points,
     }));
+    if (stepNum !== undefined) {
+      triggerAutoAdvance(stepNum);
+    }
   };
 
-  const handleCardClick = (questionId: string, option: CriteriaOption) => {
+  const handleCardClick = (questionId: string, option: CriteriaOption, stepNum?: number) => {
     if (isLocked) return;
     const currentScore = scores[questionId];
-    // If already scored within this option's range, retain the current score
+    // If already scored within this option's range, retain the current score and advance
     if (option.range && option.range.includes(currentScore)) {
+      if (stepNum !== undefined) {
+        triggerAutoAdvance(stepNum);
+      }
       return;
     }
     // Otherwise default to the top score of the selected range
     const defaultPoints = option.range ? option.range[option.range.length - 1] : option.points;
-    handleSelectOption(questionId, defaultPoints);
+    handleSelectOption(questionId, defaultPoints, stepNum);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -513,240 +568,714 @@ export default function EvaluationForm({
         </div>
       </div>
 
+      {/* Helper function to render a criteria card */}
+      {(() => null)()}
+
+      {/* Stepper Navigation & Mode Bar */}
+      <div className="mb-5 bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/90 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Question title / indicator */}
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-xl bg-blue-600 text-white font-black text-xs shadow-xs shrink-0">
+              {displayMode === "step" 
+                ? activeStep <= 10 
+                  ? `Câu ${activeStep} / 10` 
+                  : "Hoàn Tất" 
+                : "10 Tiêu Chí"}
+            </span>
+            <span className="text-xs sm:text-sm font-bold text-slate-800 truncate max-w-[260px] sm:max-w-md">
+              {displayMode === "step"
+                ? activeStep <= 10
+                  ? KPI_CRITERIA[activeStep - 1].title
+                  : "Tổng Kết & Ý Kiến Cá Nhân"
+                : "Danh Sách Toàn Bộ 10 Tiêu Chí Đánh Giá"}
+            </span>
+            {isAutoAdvancing && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full animate-pulse shrink-0">
+                <span>Tự chuyển câu...</span>
+              </span>
+            )}
+          </div>
+
+          {/* Display Mode Toggle */}
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setDisplayMode("step")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                displayMode === "step"
+                  ? "bg-white text-blue-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Hiện từng câu một và tự động nhảy câu tiếp theo khi chọn điểm"
+            >
+              🎯 Hiện Từng Câu
+            </button>
+            <button
+              type="button"
+              onClick={() => setDisplayMode("all")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                displayMode === "all"
+                  ? "bg-white text-blue-700 shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              title="Hiện toàn bộ danh sách 10 câu để cuộn xem liên tục"
+            >
+              📜 Hiện Tất Cả
+            </button>
+          </div>
+        </div>
+
+        {/* Stepper Pills for quick jumping */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {KPI_CRITERIA.map((crit, idx) => {
+            const stepNum = idx + 1;
+            const isDone = scores[crit.id] !== undefined;
+            const isCurrent = displayMode === "step" && activeStep === stepNum;
+            const scoreVal = scores[crit.id];
+
+            return (
+              <button
+                key={crit.id}
+                type="button"
+                onClick={() => {
+                  if (displayMode === "step") {
+                    handleGoToStep(stepNum);
+                  } else {
+                    document.getElementById(`criteria-${crit.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }
+                }}
+                className={`shrink-0 min-w-[38px] sm:min-w-[44px] h-9 sm:h-10 px-2 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center cursor-pointer ${
+                  isCurrent
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-300 scale-105 z-10"
+                    : isDone
+                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/60"
+                }`}
+                title={`Câu ${stepNum}: ${crit.title} ${isDone ? `(${scoreVal}đ)` : "(Chưa chọn)"}`}
+              >
+                <span className="text-[11px] font-black leading-tight">
+                  {isDone ? `✓${stepNum}` : stepNum}
+                </span>
+                <span className="text-[9px] font-semibold opacity-90 leading-tight">
+                  {isDone ? `${scoreVal}đ` : "---"}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Final Step / Review Pill */}
+          <button
+            type="button"
+            onClick={() => {
+              if (displayMode === "step") {
+                handleGoToStep(11);
+              } else {
+                document.getElementById("feedback-section")?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }
+            }}
+            className={`shrink-0 h-9 sm:h-10 px-3 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+              displayMode === "step" && activeStep === 11
+                ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-300 scale-105 z-10"
+                : answeredCount === KPI_CRITERIA.length
+                ? "bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                : "bg-slate-100 hover:bg-slate-200 text-slate-600 border border-slate-200/60"
+            }`}
+            title="Tổng kết & Nộp phiếu"
+          >
+            <span>📝 Nộp</span>
+          </button>
+        </div>
+      </div>
+
       {/* The 10 Criteria Form */}
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
-        {KPI_CRITERIA.map((criteria) => {
-          const currentScore = scores[criteria.id];
-          const isAnswered = currentScore !== undefined;
+        {displayMode === "step" ? (
+          /* STEP MODE (Hiển thị từng câu, tự động chuyển câu tiếp theo khi chọn điểm) */
+          activeStep <= 10 ? (
+            (() => {
+              const criteria = KPI_CRITERIA[activeStep - 1];
+              const currentScore = scores[criteria.id];
+              const isAnswered = currentScore !== undefined;
 
-          return (
-            <div
-              key={criteria.id}
-              className={`rounded-2xl p-4 sm:p-6 transition-all duration-200 border ${
-                isAnswered
-                  ? "bg-white border-blue-200 shadow-sm"
-                  : "bg-white border-slate-200 shadow-xs hover:border-slate-300"
-              }`}
-            >
-              {/* Question Header */}
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex items-start gap-2.5 sm:gap-3">
-                  <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 mt-0.5 transition-all ${
-                    isAnswered 
-                      ? "bg-emerald-600 text-white shadow-xs" 
-                      : "bg-slate-100 text-slate-700 font-bold"
-                  }`}>
-                    {isAnswered ? "✓" : criteria.number}
-                  </span>
-                  <div>
-                    <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 leading-snug">
-                      {criteria.title}
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
-                      {criteria.description}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[11px] sm:text-xs font-semibold">
-                  <span className="hidden sm:inline">Tối đa:</span>
-                  <span className="font-bold text-slate-900">{criteria.maxScore}đ</span>
-                </div>
-              </div>
-
-              {/* Options Grid */}
-              <div className="mt-3.5 grid grid-cols-1 gap-2.5">
-                {criteria.options.map((option, idx) => {
-                  const isSelected = option.range 
-                    ? option.range.includes(currentScore)
-                    : currentScore === option.points;
-
-                  const hasRange = Boolean(option.range && option.range.length > 1);
-
-                  return (
-                    <div
-                      key={idx}
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => handleCardClick(criteria.id, option)}
-                      className={`relative flex flex-col p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm transition-all touch-manipulation select-none ${
-                        isLocked
-                          ? "cursor-default opacity-85"
-                          : "cursor-pointer active:scale-[0.99]"
-                      } ${
-                        isSelected
-                          ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/30 shadow-xs"
-                          : "bg-slate-50/60 hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 w-full">
-                        {/* Custom Radio Circle */}
-                        <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
-                          isSelected
-                            ? "border-blue-600 bg-blue-600 text-white"
-                            : "border-slate-300 bg-white"
-                        }`}>
-                          {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <span className={`leading-relaxed text-xs sm:text-sm ${isSelected ? "font-bold text-blue-950" : "text-slate-700"}`}>
-                            {option.text}
+              return (
+                <div
+                  key={criteria.id}
+                  id={`criteria-${criteria.id}`}
+                  className="bg-white rounded-3xl p-5 sm:p-7 border border-blue-200/90 shadow-md transition-all animate-in fade-in zoom-in-95 duration-200"
+                >
+                  {/* Question Header */}
+                  <div className="flex items-start justify-between gap-3 mb-4">
+                    <div className="flex items-start gap-3">
+                      <span className={`w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 mt-0.5 shadow-xs transition-colors ${
+                        isAnswered ? "bg-emerald-600 text-white" : "bg-blue-600 text-white"
+                      }`}>
+                        {isAnswered ? "✓" : activeStep}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
+                            Tiêu chí {activeStep} / 10
                           </span>
-                        </div>
-
-                        {/* Points pill badge */}
-                        <span className={`shrink-0 px-2 py-0.5 rounded-lg text-xs font-bold ${
-                          isSelected
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : "bg-slate-200/80 text-slate-700"
-                        }`}>
-                          {isSelected 
-                            ? `+${currentScore}đ` 
-                            : hasRange && option.range
-                            ? `${option.range[0]} - ${option.range[option.range.length - 1]}đ`
-                            : `+${option.points}đ`}
-                        </span>
-                      </div>
-
-                      {/* Sub-score point selector when option has multiple points (e.g. 9 or 10) */}
-                      {hasRange && option.range && (
-                        <div 
-                          className={`mt-3 pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 transition-all ${
-                            isSelected ? "border-blue-200/90" : "border-slate-200/60"
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={`text-xs ${isSelected ? "font-bold text-blue-950" : "text-slate-500"}`}>
-                              {isSelected ? "👉 Chọn mức điểm:" : "Mức điểm:"}
+                          {isAnswered && (
+                            <span className="text-[11px] sm:text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                              Đã chọn: {currentScore} điểm
                             </span>
-                            <div className="flex items-center gap-2">
-                              {option.range.map((pt) => {
-                                const isPointActive = currentScore === pt;
-                                return (
-                                  <button
-                                    key={pt}
-                                    type="button"
-                                    disabled={isLocked}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleSelectOption(criteria.id, pt);
-                                    }}
-                                    className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all touch-manipulation ${
-                                      isLocked ? "cursor-default" : "cursor-pointer active:scale-95"
-                                    } ${
-                                      isPointActive
-                                        ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300 scale-105"
-                                        : isSelected
-                                        ? "bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 hover:border-blue-400"
-                                        : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300"
-                                    }`}
-                                  >
-                                    {pt} điểm
-                                  </button>
-                                );
-                              })}
+                          )}
+                        </div>
+                        <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 mt-1 leading-snug">
+                          {criteria.title}
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-600 mt-1.5 leading-relaxed">
+                          {criteria.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-xs font-bold">
+                      Tối đa: <span className="text-blue-700">{criteria.maxScore}đ</span>
+                    </div>
+                  </div>
+
+                  {/* Options List */}
+                  <div className="mt-5 space-y-3">
+                    {criteria.options.map((option, idx) => {
+                      const isSelected = option.range 
+                        ? option.range.includes(currentScore)
+                        : currentScore === option.points;
+
+                      const hasRange = Boolean(option.range && option.range.length > 1);
+
+                      return (
+                        <div
+                          key={idx}
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => handleCardClick(criteria.id, option, activeStep)}
+                          className={`relative flex flex-col p-4 rounded-2xl border text-xs sm:text-sm transition-all touch-manipulation select-none ${
+                            isLocked
+                              ? "cursor-default opacity-85"
+                              : "cursor-pointer active:scale-[0.99]"
+                          } ${
+                            isSelected
+                              ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/30 shadow-xs"
+                              : "bg-slate-50/60 hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 w-full">
+                            {/* Custom Radio Circle */}
+                            <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </div>
+
+                            <div className="flex-1 min-w-0">
+                              <span className={`leading-relaxed text-xs sm:text-sm ${isSelected ? "font-bold text-blue-950" : "text-slate-700"}`}>
+                                {option.text}
+                              </span>
+                            </div>
+
+                            {/* Points badge */}
+                            <span className={`shrink-0 px-2.5 py-0.5 rounded-lg text-xs font-bold ${
+                              isSelected
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "bg-slate-200/80 text-slate-700"
+                            }`}>
+                              {isSelected 
+                                ? `+${currentScore}đ` 
+                                : hasRange && option.range
+                                ? `${option.range[0]} - ${option.range[option.range.length - 1]}đ`
+                                : `+${option.points}đ`}
+                            </span>
                           </div>
 
-                          {isSelected && (
-                            <div className="text-[11px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
-                              Đang chọn: <strong className="text-blue-950">{currentScore} điểm</strong>
+                          {/* Sub-score point selector when option has multiple points (e.g. 9 or 10) */}
+                          {hasRange && option.range && (
+                            <div 
+                              className={`mt-3 pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 transition-all ${
+                                isSelected ? "border-blue-200/90" : "border-slate-200/60"
+                              }`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs ${isSelected ? "font-bold text-blue-950" : "text-slate-500"}`}>
+                                  {isSelected ? "👉 Chọn mức điểm:" : "Mức điểm:"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {option.range.map((pt) => {
+                                    const isPointActive = currentScore === pt;
+                                    return (
+                                      <button
+                                        key={pt}
+                                        type="button"
+                                        disabled={isLocked}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleSelectOption(criteria.id, pt, activeStep);
+                                        }}
+                                        className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all touch-manipulation ${
+                                          isLocked ? "cursor-default" : "cursor-pointer active:scale-95"
+                                        } ${
+                                          isPointActive
+                                            ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300 scale-105"
+                                            : isSelected
+                                            ? "bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 hover:border-blue-400"
+                                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300"
+                                        }`}
+                                      >
+                                        {pt} điểm
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <div className="text-[11px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                                  Đang chọn: <strong className="text-blue-950">{currentScore} điểm</strong>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Card bottom navigation */}
+                  <div className="mt-6 pt-5 border-t border-slate-100 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleGoToStep(activeStep - 1)}
+                      disabled={activeStep === 1}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                        activeStep === 1
+                          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95 cursor-pointer"
+                      }`}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>Câu trước</span>
+                    </button>
+
+                    <div className="text-center text-xs text-slate-500 font-medium hidden sm:block">
+                      {isAnswered ? (
+                        <span className="text-emerald-700 font-bold flex items-center gap-1 justify-center">
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Đã chấm {currentScore} điểm cho câu {activeStep}</span>
+                        </span>
+                      ) : (
+                        <span>Vui lòng chọn 1 mức điểm phía trên</span>
                       )}
                     </div>
-                  );
-                })}
+
+                    {activeStep < 10 ? (
+                      <button
+                        type="button"
+                        onClick={() => handleGoToStep(activeStep + 1)}
+                        className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+                      >
+                        <span>Câu tiếp theo</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleGoToStep(11)}
+                        className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer"
+                      >
+                        <span>Xem lại & Nộp</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            /* STEP 11: TỔNG KẾT & HOÀN TẤT NỘP PHIẾU */
+            <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
+              {/* Review summary of all 10 criteria */}
+              <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-xl bg-emerald-600 text-white font-black text-xs">
+                        Bước 11 / 11
+                      </span>
+                      <h2 className="text-lg font-bold text-slate-900">
+                        Tổng Kết & Hoàn Tất Phiếu Đánh Giá
+                      </h2>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                      Kiểm tra lại điểm số 10 tiêu chí trước khi gửi phiếu đánh giá chính thức.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Tổng điểm</p>
+                      <p className="text-xl font-black text-slate-900 leading-tight">
+                        {totalScore} <span className="text-xs font-normal text-slate-400">/100đ</span>
+                      </p>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-xl border text-xs font-black ring-1 ${getBadgeColor(classification)}`}>
+                      {classification}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table review of 10 questions */}
+                <div className="mt-4 divide-y divide-slate-100">
+                  {KPI_CRITERIA.map((crit, idx) => {
+                    const sc = scores[crit.id];
+                    const isDone = sc !== undefined;
+                    return (
+                      <div key={crit.id} className="py-2.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                            isDone ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="font-semibold text-slate-800 truncate">
+                            {crit.title}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2.5 py-1 rounded-lg font-extrabold ${
+                            isDone ? "bg-blue-50 text-blue-700" : "bg-rose-50 text-rose-700"
+                          }`}>
+                            {isDone ? `${sc} / ${crit.maxScore}đ` : "Chưa chọn"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleGoToStep(idx + 1)}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 font-semibold"
+                            title={`Sửa câu ${idx + 1}`}
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Sửa</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Question 11: Ý kiến cá nhân */}
+              <div className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-xs">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                    11
+                  </span>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                    Ý kiến cá nhân & Đề xuất cải tiến (Không bắt buộc)
+                  </h2>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mb-3">
+                  Ghi nhận ý kiến, khó khăn vướng mắc hoặc đề xuất giải pháp của bạn tới cấp quản lý và công ty.
+                </p>
+                <textarea
+                  disabled={isLocked}
+                  value={feedback}
+                  onChange={(e) => setFeedback(e.target.value)}
+                  rows={4}
+                  placeholder={isLocked ? "Phiếu đã khóa" : "Nhập ý kiến cá nhân của bạn tại đây..."}
+                  className="w-full rounded-2xl border border-slate-200 p-3.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Final Submit action bar */}
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={() => handleGoToStep(10)}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Quay lại Câu 10</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
+                  className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                    isEditing
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
+                      : isLocked
+                      ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                      : answeredCount === KPI_CRITERIA.length && !submitting
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-xl shadow-blue-500/30 cursor-pointer hover:scale-[1.02] active:scale-95"
+                      : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                  }`}
+                >
+                  {submitting ? (
+                    <span>Đang lưu...</span>
+                  ) : isEditing ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Lưu Cập Nhật Đánh Giá</span>
+                    </>
+                  ) : isLocked ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Đã Hoàn Tất (Không Thể Đánh Giá Tiếp)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Nộp Phiếu Đánh Giá KPI (10/10)</span>
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-          );
-        })}
+          )
+        ) : (
+          /* ALL MODE (Hiển thị toàn bộ danh sách 10 câu liên tục) */
+          <>
+            {KPI_CRITERIA.map((criteria, index) => {
+              const currentScore = scores[criteria.id];
+              const isAnswered = currentScore !== undefined;
 
-        {/* Question 11: Personal Feedback / Suggestions */}
-        <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
-              11
-            </span>
-            <h2 className="text-base sm:text-lg font-bold text-slate-900">
-              Ý kiến cá nhân & Đề xuất cải tiến (Không bắt buộc)
-            </h2>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mb-4">
-            Ghi nhận ý kiến, khó khăn vướng mắc hoặc đề xuất giải pháp của bạn tới cấp quản lý và công ty.
-          </p>
-          <textarea
-            disabled={isLocked}
-            value={feedback}
-            onChange={(e) => setFeedback(e.target.value)}
-            rows={4}
-            placeholder={isLocked ? "Không thể chỉnh sửa ý kiến sau khi Quản lý đã chấm điểm" : "Nhập ý kiến cá nhân của bạn tại đây..."}
-            className={`w-full rounded-xl border border-slate-200 p-3.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-              isLocked ? "bg-slate-50 cursor-not-allowed text-slate-500" : ""
-            }`}
-          />
-        </div>
+              return (
+                <div
+                  key={criteria.id}
+                  id={`criteria-${criteria.id}`}
+                  className={`rounded-2xl p-4 sm:p-6 transition-all duration-200 border ${
+                    isAnswered
+                      ? "bg-white border-blue-200 shadow-sm"
+                      : "bg-white border-slate-200 shadow-xs hover:border-slate-300"
+                  }`}
+                >
+                  {/* Question Header */}
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-start gap-2.5 sm:gap-3">
+                      <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 mt-0.5 transition-all ${
+                        isAnswered 
+                          ? "bg-emerald-600 text-white shadow-xs" 
+                          : "bg-slate-100 text-slate-700 font-bold"
+                      }`}>
+                        {isAnswered ? "✓" : criteria.number}
+                      </span>
+                      <div>
+                        <h2 className="text-sm sm:text-base md:text-lg font-bold text-slate-900 leading-snug">
+                          {criteria.title}
+                        </h2>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
+                          {criteria.description}
+                        </p>
+                      </div>
+                    </div>
 
-        {/* Bottom Submit Area */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Award className="w-5 h-5 text-blue-600" />
-              <span className="text-base font-bold text-slate-900">
-                Tổng điểm: {totalScore} / 100 điểm
-              </span>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getBadgeColor(classification)}`}>
-                Xếp loại: {classification}
-              </span>
+                    <div className="shrink-0 flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-[11px] sm:text-xs font-semibold">
+                      <span className="hidden sm:inline">Tối đa:</span>
+                      <span className="font-bold text-slate-900">{criteria.maxScore}đ</span>
+                    </div>
+                  </div>
+
+                  {/* Options Grid */}
+                  <div className="mt-3.5 grid grid-cols-1 gap-2.5">
+                    {criteria.options.map((option, idx) => {
+                      const isSelected = option.range 
+                        ? option.range.includes(currentScore)
+                        : currentScore === option.points;
+
+                      const hasRange = Boolean(option.range && option.range.length > 1);
+
+                      return (
+                        <div
+                          key={idx}
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => handleCardClick(criteria.id, option)}
+                          className={`relative flex flex-col p-3.5 sm:p-4 rounded-xl border text-xs sm:text-sm transition-all touch-manipulation select-none ${
+                            isLocked
+                              ? "cursor-default opacity-85"
+                              : "cursor-pointer active:scale-[0.99]"
+                          } ${
+                            isSelected
+                              ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/30 shadow-xs"
+                              : "bg-slate-50/60 hover:bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 w-full">
+                            {/* Custom Radio Circle */}
+                            <div className={`mt-0.5 w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected
+                                ? "border-blue-600 bg-blue-600 text-white"
+                                : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <span className={`leading-relaxed text-xs sm:text-sm ${isSelected ? "font-bold text-blue-950" : "text-slate-700"}`}>
+                                {option.text}
+                              </span>
+                            </div>
+
+                            {/* Points pill badge */}
+                            <span className={`shrink-0 px-2 py-0.5 rounded-lg text-xs font-bold ${
+                              isSelected
+                                ? "bg-blue-600 text-white shadow-xs"
+                                : "bg-slate-200/80 text-slate-700"
+                            }`}>
+                              {isSelected 
+                                ? `+${currentScore}đ` 
+                                : hasRange && option.range
+                                ? `${option.range[0]} - ${option.range[option.range.length - 1]}đ`
+                                : `+${option.points}đ`}
+                            </span>
+                          </div>
+
+                          {/* Sub-score point selector when option has multiple points (e.g. 9 or 10) */}
+                          {hasRange && option.range && (
+                            <div 
+                              className={`mt-3 pt-2.5 border-t flex flex-wrap items-center justify-between gap-2 transition-all ${
+                                isSelected ? "border-blue-200/90" : "border-slate-200/60"
+                              }`}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs ${isSelected ? "font-bold text-blue-950" : "text-slate-500"}`}>
+                                  {isSelected ? "👉 Chọn mức điểm:" : "Mức điểm:"}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {option.range.map((pt) => {
+                                    const isPointActive = currentScore === pt;
+                                    return (
+                                      <button
+                                        key={pt}
+                                        type="button"
+                                        disabled={isLocked}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleSelectOption(criteria.id, pt);
+                                        }}
+                                        className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all touch-manipulation ${
+                                          isLocked ? "cursor-default" : "cursor-pointer active:scale-95"
+                                        } ${
+                                          isPointActive
+                                            ? "bg-blue-600 text-white shadow-md shadow-blue-500/30 ring-2 ring-blue-300 scale-105"
+                                            : isSelected
+                                            ? "bg-white hover:bg-blue-100 text-blue-800 border border-blue-300 hover:border-blue-400"
+                                            : "bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 hover:border-slate-300"
+                                        }`}
+                                      >
+                                        {pt} điểm
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <div className="text-[11px] font-semibold text-blue-700 bg-blue-100/70 px-2 py-0.5 rounded-md">
+                                  Đang chọn: <strong className="text-blue-950">{currentScore} điểm</strong>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Question 11: Personal Feedback / Suggestions */}
+            <div id="feedback-section" className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-xs">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
+                  11
+                </span>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                  Ý kiến cá nhân & Đề xuất cải tiến (Không bắt buộc)
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mb-4">
+                Ghi nhận ý kiến, khó khăn vướng mắc hoặc đề xuất giải pháp của bạn tới cấp quản lý và công ty.
+              </p>
+              <textarea
+                disabled={isLocked}
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                rows={4}
+                placeholder={isLocked ? "Không thể chỉnh sửa ý kiến sau khi Quản lý đã chấm điểm" : "Nhập ý kiến cá nhân của bạn tại đây..."}
+                className={`w-full rounded-xl border border-slate-200 p-3.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                  isLocked ? "bg-slate-50 cursor-not-allowed text-slate-500" : ""
+                }`}
+              />
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {isEditing
-                ? "Bạn đang ở chế độ chỉnh sửa. Nhấn nút bên phải để lưu cập nhật phiếu đánh giá."
-                : isLocked
-                ? "Trong tháng này bạn đã hoàn tất đánh giá cho nhân sự này. Theo quy định không được đánh giá tiếp."
-                : answeredCount === KPI_CRITERIA.length
-                ? "Bạn đã hoàn thành đủ 10/10 tiêu chí. Sẵn sàng gửi bài."
-                : `Còn thiếu ${KPI_CRITERIA.length - answeredCount} tiêu chí chưa hoàn thành.`}
-            </p>
-          </div>
 
-          <button
-            type="submit"
-            disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
-            className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-              isEditing
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
-                : isLocked
-                ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                : answeredCount === KPI_CRITERIA.length && !submitting
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
-                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-            }`}
-          >
-            {submitting ? (
-              <span>Đang lưu...</span>
-            ) : isEditing ? (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Lưu Cập Nhật Đánh Giá</span>
-              </>
-            ) : isLocked ? (
-              <>
-                <Lock className="w-4 h-4" />
-                <span>Đã Hoàn Tất (Không Thể Đánh Giá Tiếp)</span>
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                <span>Nộp Phiếu Đánh Giá KPI</span>
-              </>
-            )}
-          </button>
-        </div>
+            {/* Bottom Submit Area */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-blue-600" />
+                  <span className="text-base font-bold text-slate-900">
+                    Tổng điểm: {totalScore} / 100 điểm
+                  </span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getBadgeColor(classification)}`}>
+                    Xếp loại: {classification}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {isEditing
+                    ? "Bạn đang ở chế độ chỉnh sửa. Nhấn nút bên phải để lưu cập nhật phiếu đánh giá."
+                    : isLocked
+                    ? "Trong tháng này bạn đã hoàn tất đánh giá cho nhân sự này. Theo quy định không được đánh giá tiếp."
+                    : answeredCount === KPI_CRITERIA.length
+                    ? "Bạn đã hoàn thành đủ 10/10 tiêu chí. Sẵn sàng gửi bài."
+                    : `Còn thiếu ${KPI_CRITERIA.length - answeredCount} tiêu chí chưa hoàn thành.`}
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
+                className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+                  isEditing
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
+                    : isLocked
+                    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                    : answeredCount === KPI_CRITERIA.length && !submitting
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
+                    : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
+                }`}
+              >
+                {submitting ? (
+                  <span>Đang lưu...</span>
+                ) : isEditing ? (
+                  <>
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Lưu Cập Nhật Đánh Giá</span>
+                  </>
+                ) : isLocked ? (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Đã Hoàn Tất (Không Thể Đánh Giá Tiếp)</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4" />
+                    <span>Nộp Phiếu Đánh Giá KPI</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </form>
 
       {/* Success Modal */}
