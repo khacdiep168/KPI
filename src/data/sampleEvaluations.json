@@ -3428,5 +3428,40 @@
     "status": "SUBMITTED",
     "createdAt": "2026-09-28T08:26:19.000Z",
     "updatedAt": "2026-09-28T08:26:19.000Z"
+  },
+  {
+    "id": "eval-tkv14-06-2026",
+    "period": "06-2026",
+    "evaluationType": "STAFF",
+    "evaluatorManv": "TKV14",
+    "evaluatorName": "NGÔ THỊ NGỌC SANG",
+    "evaluatorDept": "TẠP VỤ",
+    "targetManv": "TKV14",
+    "targetName": "NGÔ THỊ NGỌC SANG",
+    "targetDept": "TẠP VỤ",
+    "scores": {
+      "q1": 7,
+      "q2": 7,
+      "q3": 7,
+      "q4": 19,
+      "q5": 8,
+      "q6": 8,
+      "q7": 4,
+      "q8": 4,
+      "q9": 4,
+      "q10": 4
+    },
+    "selfTotalScore": 72,
+    "selfClassification": "Khá",
+    "selfFeedback": "",
+    "managerScore": null,
+    "managerClassification": null,
+    "managerFeedback": null,
+    "councilScore": null,
+    "councilClassification": null,
+    "councilFeedback": null,
+    "status": "SUBMITTED",
+    "createdAt": "2026-06-25T10:20:17.000Z",
+    "updatedAt": "2026-06-25T10:20:17.000Z"
   }
 ]
