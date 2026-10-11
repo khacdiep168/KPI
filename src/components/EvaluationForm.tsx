@@ -11,7 +11,9 @@ import {
   getVisibleColleaguesForEvaluation,
   getManagedDepartments,
   canUserManageAll,
-  getEvaluatedTargetManvs
+  getEvaluatedTargetManvs,
+  updateEvaluation,
+  isEvaluationInCurrentMonth
 } from "@/lib/storage";
 import { getBadgeColor } from "@/lib/utils";
 import confetti from "canvas-confetti";
@@ -22,31 +24,37 @@ import {
   Award, 
   AlertCircle, 
   Calendar, 
-  UserCheck2,
-  Sparkles,
-  ArrowRight,
-  Lock,
-  Edit,
-  Info
+  UserCheck2, 
+  Sparkles, 
+  ArrowRight, 
+  Lock, 
+  Edit, 
+  Info 
 } from "lucide-react";
 
 interface EvaluationFormProps {
   currentUser: User;
   initialTargetManv?: string;
+  initialPeriodMonthYear?: string;
+  initialEditMode?: boolean;
   onSuccess: (evaluation: EvaluationRecord) => void;
 }
 
 export default function EvaluationForm({ 
   currentUser, 
   initialTargetManv,
+  initialPeriodMonthYear,
+  initialEditMode,
   onSuccess 
 }: EvaluationFormProps) {
   const allUsers = getUsers();
   const periods = getPeriods();
-  const [selectedPeriodMonthYear, setSelectedPeriodMonthYear] = useState<string>(
-    (periods.find((p) => p.isOpen) || periods[0]).monthYear
-  );
+  const [selectedPeriodMonthYear, setSelectedPeriodMonthYear] = useState<string>(() => {
+    if (initialPeriodMonthYear) return initialPeriodMonthYear;
+    return (periods.find((p) => p.isOpen) || periods[0]).monthYear;
+  });
   const activePeriod = periods.find((p) => p.monthYear === selectedPeriodMonthYear) || periods[0];
+  const [isEditing, setIsEditing] = useState<boolean>(Boolean(initialEditMode));
 
   // Colleagues filtered by department & manager scope
   const colleagues = useMemo(() => {
@@ -100,20 +108,32 @@ export default function EvaluationForm({
   // Check if evaluation exists when targetManv or activePeriod changes
   useEffect(() => {
     const existing = getEvaluationForTarget(currentUser.manv, targetManv, activePeriod.monthYear);
+    const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
+    const managerAlreadyReviewed = existing?.managerScore !== null && existing?.managerScore !== undefined;
+
     if (existing) {
       setExistingRecord(existing);
       setScores(existing.scores || {});
       setFeedback(existing.selfFeedback || "");
-      // In this month, if already evaluated, lock it (cannot evaluate again)
-      setIsLocked(true);
+
+      // In current month and manager has not reviewed yet:
+      // Allow editing if initialEditMode is true
+      if (inCurrentMonth && !managerAlreadyReviewed && initialEditMode) {
+        setIsEditing(true);
+        setIsLocked(false);
+      } else {
+        setIsEditing(false);
+        setIsLocked(true);
+      }
     } else {
       setExistingRecord(null);
-      // If period is closed, lock it in view-only mode
-      setIsLocked(!activePeriod.isOpen);
+      setIsEditing(false);
+      // If period is closed or not in current month, lock it in view-only mode
+      setIsLocked(!activePeriod.isOpen || !inCurrentMonth);
       setScores({});
       setFeedback("");
     }
-  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen]);
+  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode]);
 
   // Calculate realtime total score
   const totalScore = useMemo(() => {
@@ -150,11 +170,18 @@ export default function EvaluationForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLocked || existingRecord) {
+    const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
+
+    if (!inCurrentMonth) {
+      alert(`Kỳ đánh giá ${activePeriod.name} đã qua tháng (đã đóng). Không thể thực hiện đánh giá hoặc chỉnh sửa!`);
+      return;
+    }
+
+    if (isLocked) {
       alert(
         `Trong tháng ${activePeriod.name}, bạn đã hoàn thành đánh giá cho ${
           targetUser.manv === currentUser.manv ? "bản thân" : targetUser.name
-        }. Mỗi nhân sự chỉ được đánh giá 1 lần trong tháng và không được gửi đánh giá tiếp.`
+        }. Phiếu đánh giá đang bị khóa.`
       );
       return;
     }
@@ -167,31 +194,60 @@ export default function EvaluationForm({
     setSubmitting(true);
 
     try {
-      const record = saveEvaluation({
-        period: activePeriod.monthYear,
-        evaluatorManv: currentUser.manv,
-        evaluatorName: currentUser.name,
-        evaluatorDept: currentUser.dept,
-        targetManv: targetUser.manv,
-        targetName: targetUser.name,
-        targetDept: targetUser.dept,
-        scores: {
-          q1: scores["q1"] || 0,
-          q2: scores["q2"] || 0,
-          q3: scores["q3"] || 0,
-          q4: scores["q4"] || 0,
-          q5: scores["q5"] || 0,
-          q6: scores["q6"] || 0,
-          q7: scores["q7"] || 0,
-          q8: scores["q8"] || 0,
-          q9: scores["q9"] || 0,
-          q10: scores["q10"] || 0,
-        },
-        selfTotalScore: totalScore,
-        selfClassification: classification,
-        selfFeedback: feedback.trim(),
-        status: "SUBMITTED",
-      });
+      let record: EvaluationRecord;
+
+      if (existingRecord && isEditing) {
+        // Cập nhật phiếu đánh giá đã tồn tại trong tháng
+        const updated = updateEvaluation(existingRecord.id, {
+          scores: {
+            q1: scores["q1"] || 0,
+            q2: scores["q2"] || 0,
+            q3: scores["q3"] || 0,
+            q4: scores["q4"] || 0,
+            q5: scores["q5"] || 0,
+            q6: scores["q6"] || 0,
+            q7: scores["q7"] || 0,
+            q8: scores["q8"] || 0,
+            q9: scores["q9"] || 0,
+            q10: scores["q10"] || 0,
+          },
+          selfTotalScore: totalScore,
+          selfClassification: classification,
+          selfFeedback: feedback.trim(),
+        });
+
+        if (!updated) {
+          throw new Error("Không thể cập nhật phiếu đánh giá.");
+        }
+        record = updated;
+      } else {
+        // Tạo phiếu đánh giá mới
+        record = saveEvaluation({
+          period: activePeriod.monthYear,
+          evaluatorManv: currentUser.manv,
+          evaluatorName: currentUser.name,
+          evaluatorDept: currentUser.dept,
+          targetManv: targetUser.manv,
+          targetName: targetUser.name,
+          targetDept: targetUser.dept,
+          scores: {
+            q1: scores["q1"] || 0,
+            q2: scores["q2"] || 0,
+            q3: scores["q3"] || 0,
+            q4: scores["q4"] || 0,
+            q5: scores["q5"] || 0,
+            q6: scores["q6"] || 0,
+            q7: scores["q7"] || 0,
+            q8: scores["q8"] || 0,
+            q9: scores["q9"] || 0,
+            q10: scores["q10"] || 0,
+          },
+          selfTotalScore: totalScore,
+          selfClassification: classification,
+          selfFeedback: feedback.trim(),
+          status: "SUBMITTED",
+        });
+      }
 
       // Confetti effect
       confetti({
@@ -202,6 +258,7 @@ export default function EvaluationForm({
 
       setSubmittedRecord(record);
       setExistingRecord(record);
+      setIsEditing(false);
       setIsLocked(true);
       onSuccess(record);
     } catch (err: any) {
@@ -301,11 +358,41 @@ export default function EvaluationForm({
         </div>
       </div>
 
-      {/* Locked Status Notice when already evaluated */}
-      {isLocked && existingRecord && (
+      {/* Editing Mode Banner */}
+      {isEditing && existingRecord && (
+        <div className="mb-6 p-4 rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Edit className="w-5 h-5 text-blue-600 shrink-0" />
+            <div className="text-xs sm:text-sm">
+              <p className="font-bold flex items-center gap-2">
+                <span>CHẾ ĐỘ SỬA ĐÁNH GIÁ (TRONG THÁNG)</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-blue-200 text-blue-900 font-extrabold">
+                  ĐANG MỞ SỬA
+                </span>
+              </p>
+              <p className="text-blue-700 text-xs mt-0.5">
+                Bạn đang chỉnh sửa phiếu đánh giá cho <strong>{targetUser.name}</strong> ({activePeriod.name}). Hãy điều chỉnh các tiêu chí và nhấn <strong>Lưu Cập Nhật Đánh Giá</strong> ở cuối trang.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsEditing(false);
+              setIsLocked(true);
+            }}
+            className="px-3 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors shrink-0"
+          >
+            Hủy Sửa
+          </button>
+        </div>
+      )}
+
+      {/* Locked Status Notice when already evaluated and NOT in editing mode */}
+      {isLocked && existingRecord && !isEditing && (
         <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start gap-3 shadow-xs">
           <Lock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-xs sm:text-sm">
+          <div className="text-xs sm:text-sm flex-1">
             <p className="font-bold flex items-center gap-2">
               <span>ĐÃ HOÀN TẤT ĐÁNH GIÁ THÁNG NÀY</span>
               <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider bg-amber-200 text-amber-900 font-extrabold">
@@ -320,14 +407,32 @@ export default function EvaluationForm({
                   : `${existingRecord.targetName} (${existingRecord.targetManv})`}
               </strong>{" "}
               trong {activePeriod.name} (Điểm đã tự chấm: <strong>{existingRecord.selfTotalScore}đ</strong>).
-              Theo quy định: <strong>Mỗi nhân sự chỉ được đánh giá 1 lần trong tháng và không được đánh giá tiếp</strong>.
+              Theo quy định: <strong>Mỗi nhân sự chỉ được đánh giá 1 lần trong tháng</strong>.
             </p>
-            {existingRecord.managerScore !== null && existingRecord.managerScore !== undefined && (
+            {existingRecord.managerScore !== null && existingRecord.managerScore !== undefined ? (
               <p className="mt-1.5 text-emerald-800 font-semibold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>
                   Quản lý đã chấm thẩm định: <strong>{existingRecord.managerScore} điểm</strong> ({existingRecord.managerClassification}).
                 </span>
+              </p>
+            ) : isEvaluationInCurrentMonth(activePeriod.monthYear) ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setIsLocked(false);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Sửa Lại Đánh Giá Này (Trong Tháng)</span>
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1.5 text-rose-700 font-medium text-xs">
+                Kỳ đánh giá này đã qua tháng (đã đóng). Không thể chỉnh sửa lại.
               </p>
             )}
           </div>
@@ -599,7 +704,9 @@ export default function EvaluationForm({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              {isLocked
+              {isEditing
+                ? "Bạn đang ở chế độ chỉnh sửa. Nhấn nút bên phải để lưu cập nhật phiếu đánh giá."
+                : isLocked
                 ? "Trong tháng này bạn đã hoàn tất đánh giá cho nhân sự này. Theo quy định không được đánh giá tiếp."
                 : answeredCount === KPI_CRITERIA.length
                 ? "Bạn đã hoàn thành đủ 10/10 tiêu chí. Sẵn sàng gửi bài."
@@ -609,9 +716,11 @@ export default function EvaluationForm({
 
           <button
             type="submit"
-            disabled={answeredCount < KPI_CRITERIA.length || submitting || isLocked}
+            disabled={answeredCount < KPI_CRITERIA.length || submitting || (isLocked && !isEditing)}
             className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-              isLocked
+              isEditing
+                ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
+                : isLocked
                 ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                 : answeredCount === KPI_CRITERIA.length && !submitting
                 ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/25 cursor-pointer hover:scale-[1.02]"
@@ -620,6 +729,11 @@ export default function EvaluationForm({
           >
             {submitting ? (
               <span>Đang lưu...</span>
+            ) : isEditing ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Lưu Cập Nhật Đánh Giá</span>
+              </>
             ) : isLocked ? (
               <>
                 <Lock className="w-4 h-4" />

@@ -471,6 +471,30 @@ export function getPeriods(): KpiPeriod[] {
   return [...list].sort((a, b) => comparePeriodsDesc(a.monthYear, b.monthYear));
 }
 
+export function isEvaluationInCurrentMonth(period: string): boolean {
+  if (!period) return false;
+
+  const periods = getPeriods();
+  const matched = periods.find((p) => p.monthYear === period);
+  if (matched) {
+    return matched.isOpen === true;
+  }
+
+  // Fallback: check if matches current calendar month & year
+  const now = new Date();
+  const curMonth = now.getMonth() + 1;
+  const curYear = now.getFullYear();
+
+  const parts = period.split(/[-/]/);
+  if (parts.length >= 2) {
+    const pMonth = parseInt(parts[0], 10);
+    const pYear = parseInt(parts[1], 10);
+    return pMonth === curMonth && pYear === curYear;
+  }
+
+  return false;
+}
+
 export function getAllPeriods(): { monthYear: string; name: string }[] {
   const definedPeriods = getPeriods();
   const evaluations = getEvaluations();

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { User, EvaluationRecord } from "@/types";
-import { getEvaluations, getAllPeriods, exportEvaluationsToExcel } from "@/lib/storage";
+import { getEvaluations, getAllPeriods, exportEvaluationsToExcel, isEvaluationInCurrentMonth } from "@/lib/storage";
 import { getBadgeColor, getStatusBadge } from "@/lib/utils";
 import { KPI_CRITERIA } from "@/data/criteria";
 import { 
@@ -18,13 +18,14 @@ import {
   ShieldCheck,
   Edit,
   Search,
-  Filter,
-  FileSpreadsheet
+  Filter, 
+  FileSpreadsheet,
+  Lock
 } from "lucide-react";
 
 interface HistoryListProps {
   currentUser: User;
-  onEditEvaluation?: (targetManv: string) => void;
+  onEditEvaluation?: (targetManv: string, period?: string) => void;
 }
 
 export default function HistoryList({ currentUser, onEditEvaluation }: HistoryListProps) {
@@ -220,14 +221,25 @@ export default function HistoryList({ currentUser, onEditEvaluation }: HistoryLi
                 <div className="flex items-center gap-2 shrink-0">
                   {item.evaluatorManv === currentUser.manv &&
                     (item.managerScore === null || item.managerScore === undefined) && (
-                      <button
-                        onClick={() => onEditEvaluation && onEditEvaluation(item.targetManv)}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors"
-                        title="Quản lý chưa chấm, bấm để sửa lại đánh giá"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                        <span>Sửa Đánh Giá</span>
-                      </button>
+                      isEvaluationInCurrentMonth(item.period) ? (
+                        <button
+                          onClick={() => onEditEvaluation && onEditEvaluation(item.targetManv, item.period)}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors cursor-pointer"
+                          title="Trong tháng: Quản lý chưa chấm, bấm để sửa lại đánh giá"
+                        >
+                          <Edit className="w-3.5 h-3.5" />
+                          <span>Sửa Đánh Giá</span>
+                        </button>
+                      ) : (
+                        <button
+                          disabled={true}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 text-slate-400 text-xs font-medium cursor-not-allowed border border-slate-200/80 opacity-70"
+                          title={`Kỳ ${item.period} đã qua tháng đánh giá. Không thể chỉnh sửa.`}
+                        >
+                          <Lock className="w-3.5 h-3.5 text-slate-400" />
+                          <span>Sửa Đánh Giá</span>
+                        </button>
+                      )
                     )}
 
                   <button

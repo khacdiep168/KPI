@@ -17,6 +17,7 @@ export default function HomePage() {
   const [isMounted, setIsMounted] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<"evaluate" | "history" | "manager" | "admin" | "annual-report">("evaluate");
   const [selectedEditTarget, setSelectedEditTarget] = useState<string | undefined>(undefined);
+  const [selectedEditPeriod, setSelectedEditPeriod] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     setIsMounted(true);
@@ -79,11 +80,14 @@ export default function HomePage() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 pt-20 pb-28 sm:pt-24 md:pb-8">
         {activeTab === "evaluate" && (
           <EvaluationForm
-            key={selectedEditTarget || currentUser.manv}
+            key={`${selectedEditTarget || currentUser.manv}-${selectedEditPeriod || "default"}`}
             currentUser={currentUser}
             initialTargetManv={selectedEditTarget}
+            initialPeriodMonthYear={selectedEditPeriod}
+            initialEditMode={Boolean(selectedEditTarget)}
             onSuccess={() => {
-              // Could trigger notification or auto-switch
+              setSelectedEditTarget(undefined);
+              setSelectedEditPeriod(undefined);
             }}
           />
         )}
@@ -91,8 +95,9 @@ export default function HomePage() {
         {activeTab === "history" && (
           <HistoryList 
             currentUser={currentUser} 
-            onEditEvaluation={(target) => {
+            onEditEvaluation={(target, period) => {
               setSelectedEditTarget(target);
+              setSelectedEditPeriod(period);
               setActiveTab("evaluate");
               window.location.hash = "evaluate";
             }}
