@@ -58,7 +58,7 @@ export default function EvaluationForm({
   initialEditMode,
   onSuccess 
 }: EvaluationFormProps) {
-  const allUsers = getUsers();
+  const allUsers = useMemo(() => getUsers(), [currentUser.manv]);
   const periods = getPeriods();
   const [selectedPeriodMonthYear, setSelectedPeriodMonthYear] = useState<string>(() => {
     if (initialPeriodMonthYear) return initialPeriodMonthYear;
@@ -99,7 +99,9 @@ export default function EvaluationForm({
     }
     return currentUser.manv;
   });
-  const targetUser = allUsers.find((u) => u.manv === targetManv) || currentUser;
+  const targetUser = useMemo(() => {
+    return allUsers.find((u) => u.manv === targetManv) || currentUser;
+  }, [allUsers, targetManv, currentUser]);
 
   // Evaluation Type: STAFF (10 criteria) or MANAGER (7 criteria - QĐ 11/QĐ-TKV)
   const [evaluationType, setEvaluationType] = useState<EvaluationType>(() => {
@@ -177,9 +179,10 @@ export default function EvaluationForm({
       setIsLocked(!activePeriod.isOpen || !inCurrentMonth);
       setScores({});
       setFeedback("");
-      setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : "STAFF");
+      const resolvedTarget = getUsers().find((u) => u.manv === targetManv) || currentUser;
+      setEvaluationType(isManagerTitleOrRole(resolvedTarget) ? "MANAGER" : "STAFF");
     }
-  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode, targetUser]);
+  }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode]);
 
   const handleSwitchEvaluationType = (newType: EvaluationType) => {
     if (isLocked) return;
