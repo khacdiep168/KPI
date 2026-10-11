@@ -3,7 +3,7 @@
 import { User, EvaluationRecord, KpiPeriod } from "@/types";
 import { INITIAL_USERS } from "@/data/users";
 import { INITIAL_EVALUATIONS } from "@/data/evaluations";
-import { calculateClassification } from "@/data/criteria";
+import { calculateClassification, isManagerTitleOrRole } from "@/data/criteria";
 import { pushEvaluationToSupabase, pushUserToSupabase } from "./supabaseSync";
 import { getCompanyConfig } from "./companyConfig";
 import * as XLSX from "xlsx";
@@ -463,10 +463,13 @@ export function getVisibleColleaguesForEvaluation(currentUser: User): User[] {
     );
   }
 
-  // 2. Nhân viên thông thường (User): Bộ phận nào chỉ thấy nhân viên bộ phận đó
+  // 2. Nhân viên thông thường (User): Bộ phận nào chỉ thấy nhân viên bộ phận đó, KHÔNG ĐƯỢC đánh giá cấp quản lý
   const userDept = (currentUser.dept || "").trim().toUpperCase();
   return activeUsers.filter(
-    (u) => u.manv !== currentUser.manv && (u.dept || "").trim().toUpperCase() === userDept
+    (u) =>
+      u.manv !== currentUser.manv &&
+      (u.dept || "").trim().toUpperCase() === userDept &&
+      !isManagerTitleOrRole(u)
   );
 }
 

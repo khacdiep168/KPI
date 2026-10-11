@@ -105,6 +105,7 @@ export default function EvaluationForm({
 
   // Evaluation Type: STAFF (10 criteria) or MANAGER (7 criteria - QĐ 11/QĐ-TKV)
   const [evaluationType, setEvaluationType] = useState<EvaluationType>(() => {
+    if (!isManagerTitleOrRole(currentUser)) return "STAFF";
     return isManagerTitleOrRole(targetUser) ? "MANAGER" : "STAFF";
   });
 
@@ -161,7 +162,11 @@ export default function EvaluationForm({
       setFeedback(existing.selfFeedback || "");
       const recType: EvaluationType =
         existing.evaluationType || (existing.scores?.q8 !== undefined ? "STAFF" : "MANAGER");
-      setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : recType);
+      if (!isManagerTitleOrRole(currentUser)) {
+        setEvaluationType("STAFF");
+      } else {
+        setEvaluationType(isManagerTitleOrRole(targetUser) ? "MANAGER" : recType);
+      }
 
       // In current month and manager has not reviewed yet:
       // Allow editing if initialEditMode is true
@@ -179,8 +184,12 @@ export default function EvaluationForm({
       setIsLocked(!activePeriod.isOpen || !inCurrentMonth);
       setScores({});
       setFeedback("");
-      const resolvedTarget = getUsers().find((u) => u.manv === targetManv) || currentUser;
-      setEvaluationType(isManagerTitleOrRole(resolvedTarget) ? "MANAGER" : "STAFF");
+      if (!isManagerTitleOrRole(currentUser)) {
+        setEvaluationType("STAFF");
+      } else {
+        const resolvedTarget = getUsers().find((u) => u.manv === targetManv) || currentUser;
+        setEvaluationType(isManagerTitleOrRole(resolvedTarget) ? "MANAGER" : "STAFF");
+      }
     }
   }, [targetManv, currentUser.manv, activePeriod.monthYear, activePeriod.isOpen, initialEditMode]);
 
@@ -269,6 +278,12 @@ export default function EvaluationForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isManagerTitleOrRole(currentUser) && isManagerTitleOrRole(targetUser) && targetUser.manv !== currentUser.manv) {
+      alert("Cấp nhân viên không được phép đánh giá cấp quản lý!");
+      return;
+    }
+
     const inCurrentMonth = isEvaluationInCurrentMonth(activePeriod.monthYear);
 
     if (!inCurrentMonth) {
@@ -462,39 +477,18 @@ export default function EvaluationForm({
                 Biểu mẫu đánh giá:
               </span>
               <div className="inline-flex rounded-xl bg-slate-950/80 p-1 border border-slate-700/80 gap-1">
-                {!isManagerTitleOrRole(targetUser) ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isLocked}
-                      onClick={() => handleSwitchEvaluationType("STAFF")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        evaluationType === "STAFF"
-                          ? "bg-blue-600 text-white shadow-sm"
-                          : "text-slate-400 hover:text-white"
-                      } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
-                    >
-                      <span>👤 Nhân Viên (10 Tiêu Chí)</span>
-                      <span className="text-[9px] bg-blue-400/20 text-blue-300 px-1.5 py-0.2 rounded-md font-normal hidden sm:inline">Phù hợp</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isLocked}
-                      onClick={() => handleSwitchEvaluationType("MANAGER")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                        evaluationType === "MANAGER"
-                          ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm"
-                          : "text-slate-400 hover:text-white"
-                      } ${isLocked ? "cursor-default opacity-80" : "cursor-pointer"}`}
-                    >
-                      <span>👔 Cấp Quản Lý (7 Tiêu Chí)</span>
-                    </button>
-                  </>
-                ) : (
+                {isManagerTitleOrRole(targetUser) ? (
                   <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm flex items-center gap-2">
                     <span>👔 Cấp Quản Lý (7 Tiêu Chí - QĐ 11/QĐ-TKV)</span>
                     <span className="text-[9px] bg-white/20 text-white px-2 py-0.5 rounded-md font-medium">
                       Bắt buộc cho cấp Quản lý
+                    </span>
+                  </div>
+                ) : (
+                  <div className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white shadow-sm flex items-center gap-2">
+                    <span>👤 Nhân Viên (10 Tiêu Chí)</span>
+                    <span className="text-[9px] bg-white/20 text-white px-2 py-0.5 rounded-md font-medium">
+                      Biểu mẫu Nhân Viên
                     </span>
                   </div>
                 )}
