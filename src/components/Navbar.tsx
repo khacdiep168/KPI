@@ -20,9 +20,13 @@ import {
   KeyRound,
   X,
   ChevronRight,
-  User as UserIcon
+  User as UserIcon,
+  Settings,
+  UserPlus
 } from "lucide-react";
 import ChangePasswordModal from "./ChangePasswordModal";
+import CompanySettingsModal from "./CompanySettingsModal";
+import AddEmployeeModal from "./AddEmployeeModal";
 
 interface NavbarProps {
   currentUser: User;
@@ -39,6 +43,8 @@ export default function Navbar({
   const [mounted, setMounted] = useState(false);
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showChangePassModal, setShowChangePassModal] = useState(false);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [showAddEmpModal, setShowAddEmpModal] = useState(false);
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
 
   useEffect(() => {
@@ -54,6 +60,10 @@ export default function Navbar({
     logout();
     window.location.reload();
   };
+
+  const isAdmin = currentUser.role === "Admin";
+  const isManager = currentUser.role === "Manager" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"));
+  const canAddEmployee = isAdmin || isManager || (currentUser.dept && currentUser.dept.toUpperCase().includes("HÀNH CHÍNH"));
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -264,16 +274,62 @@ export default function Navbar({
               </button>
             </div>
 
-            {/* Các nút bấm thao tác lớn dành cho nhân viên trên điện thoại */}
-            <div className="py-4 space-y-3">
-              {/* Nút Đổi mật khẩu cá nhân */}
+            {/* Các nút bấm thao tác dành cho tài khoản */}
+            <div className="py-4 space-y-2.5">
+              {/* 1. Nút Cài đặt doanh nghiệp (Dành cho Admin / Ban Giám Đốc) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowCompanyModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-amber-50 hover:bg-amber-100/80 border border-amber-200 text-amber-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-md shadow-amber-500/25 shrink-0">
+                      <Settings className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-amber-950 text-sm">Cài Đặt Doanh Nghiệp</p>
+                      <p className="text-xs text-amber-700/80 font-normal mt-0.5">Tùy chỉnh logo, tên công ty, địa chỉ và nơi ký</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-amber-500 shrink-0" />
+                </button>
+              )}
+
+              {/* 2. Nút Thêm nhân viên (Dành cho Admin / Quản lý) */}
+              {canAddEmployee && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowAddEmpModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 text-emerald-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 shrink-0">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-emerald-950 text-sm">Thêm Nhân Viên</p>
+                      <p className="text-xs text-emerald-700/80 font-normal mt-0.5">Tạo tài khoản mới và phân quyền nhân sự</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-emerald-500 shrink-0" />
+                </button>
+              )}
+
+              {/* 3. Nút Đổi mật khẩu cá nhân */}
               <button
                 type="button"
                 onClick={() => {
                   setShowProfileSheet(false);
                   setShowChangePassModal(true);
                 }}
-                className="w-full p-3.5 sm:p-4 rounded-2xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-blue-50 hover:bg-blue-100/80 border border-blue-200 text-blue-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0">
@@ -287,11 +343,11 @@ export default function Navbar({
                 <ChevronRight className="w-5 h-5 text-blue-500 shrink-0" />
               </button>
 
-              {/* Nút Đăng xuất tài khoản */}
+              {/* 4. Nút Đăng xuất tài khoản */}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full p-3.5 sm:p-4 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-rose-50 hover:bg-rose-100/80 border border-rose-200 text-rose-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-md shadow-rose-500/25 shrink-0">
@@ -439,6 +495,19 @@ export default function Navbar({
         currentUser={currentUser}
         isOpen={showChangePassModal}
         onClose={() => setShowChangePassModal(false)}
+      />
+
+      {/* Company Settings Modal */}
+      <CompanySettingsModal
+        isOpen={showCompanyModal}
+        onClose={() => setShowCompanyModal(false)}
+      />
+
+      {/* Add Employee Modal */}
+      <AddEmployeeModal
+        isOpen={showAddEmpModal}
+        onClose={() => setShowAddEmpModal(false)}
+        defaultDept={currentUser.dept}
       />
     </header>
   );

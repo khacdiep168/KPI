@@ -7,8 +7,6 @@ import {
   updateEvaluation, 
   getDepartments, 
   getManagedDepartments, 
-  canUserAddEmployees, 
-  addUser,
   getAllPeriods,
   exportEvaluationsToExcel
 } from "@/lib/storage";
@@ -23,7 +21,6 @@ import {
   Award, 
   MessageSquare,
   AlertCircle,
-  UserPlus,
   ShieldCheck,
   Building,
   Check,
@@ -39,7 +36,6 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
   const [evaluations, setEvaluations] = useState<EvaluationRecord[]>(getEvaluations());
   const allDepartments = getDepartments();
   const managedScope = getManagedDepartments(currentUser);
-  const canAdd = canUserAddEmployees(currentUser);
   const availablePeriods = getAllPeriods();
 
   // Departments this manager is permitted to view
@@ -55,17 +51,6 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
   const [editingRecord, setEditingRecord] = useState<EvaluationRecord | null>(null);
   const [mgrScore, setMgrScore] = useState<number>(80);
   const [mgrFeedback, setMgrFeedback] = useState<string>("");
-
-  // Add Employee Modal state
-  const [showAddEmpModal, setShowAddEmpModal] = useState<boolean>(false);
-  const [newManv, setNewManv] = useState<string>("");
-  const [newName, setNewName] = useState<string>("");
-  const [newDept, setNewDept] = useState<string>(permittedDepts[0] || "ĐIỂM TẬP KẾT");
-  const [newTitle, setNewTitle] = useState<string>("NHÂN VIÊN");
-  const [newPassword, setNewPassword] = useState<string>("123456");
-  const [newRole, setNewRole] = useState<"User" | "Manager" | "Admin">("User");
-  const [addEmpError, setAddEmpError] = useState<string>("");
-  const [addEmpSuccess, setAddEmpSuccess] = useState<string>("");
 
   const filteredList = evaluations.filter((item) => {
     // 0. Period Filter
@@ -123,38 +108,6 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
     }
   };
 
-  const handleAddEmployee = (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddEmpError("");
-    setAddEmpSuccess("");
-
-    if (!newManv.trim() || !newName.trim()) {
-      setAddEmpError("Vui lòng điền đầy đủ Mã nhân viên và Họ tên.");
-      return;
-    }
-
-    try {
-      const created = addUser({
-        manv: newManv.trim().toUpperCase(),
-        name: newName.trim().toUpperCase(),
-        dept: newDept.trim(),
-        title: newTitle.trim(),
-        password: newPassword.trim(),
-        role: newRole,
-      });
-
-      setAddEmpSuccess(`Thêm nhân viên ${created.name} (${created.manv}) thành công!`);
-      setNewManv("");
-      setNewName("");
-      setTimeout(() => {
-        setAddEmpSuccess("");
-        setShowAddEmpModal(false);
-      }, 1500);
-    } catch (err: any) {
-      setAddEmpError(err.message || "Lỗi khi thêm nhân viên.");
-    }
-  };
-
   // Scope label text for manager badge
   const getScopeDescription = () => {
     if (managedScope === "ALL") {
@@ -185,20 +138,6 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {canAdd && (
-            <button
-              onClick={() => {
-                setAddEmpError("");
-                setAddEmpSuccess("");
-                setShowAddEmpModal(true);
-              }}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-xs"
-              title="Thêm nhân viên mới vào hệ thống"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>Thêm Nhân Viên</span>
-            </button>
-          )}
 
           <button
             onClick={() => {
@@ -461,155 +400,7 @@ export default function ManagerReview({ currentUser }: ManagerReviewProps) {
         </div>
       )}
 
-      {/* Add Employee Modal for Quản lý Hành Chánh & Admin */}
-      {showAddEmpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-slate-100">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                  <UserPlus className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    Thêm Nhân Viên Mới
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Quyền hạn Quản Lý Hành Chánh & Ban Giám Đốc
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddEmpModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
 
-            {addEmpError && (
-              <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{addEmpError}</span>
-              </div>
-            )}
-
-            {addEmpSuccess && (
-              <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0" />
-                <span>{addEmpSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAddEmployee} className="mt-4 space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">
-                  Mã Số Nhân Viên (MANV) *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: TKV45, TKV46..."
-                  value={newManv}
-                  onChange={(e) => setNewManv(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono uppercase text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">
-                  Họ Và Tên *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: NGUYỄN VĂN AN"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 uppercase text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">
-                  Bộ Phận *
-                </label>
-                <select
-                  value={newDept}
-                  onChange={(e) => setNewDept(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                >
-                  {allDepartments.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                  <option value="HÀNH CHÍNH">HÀNH CHÍNH</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">
-                    Chức Vụ
-                  </label>
-                  <select
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="NHÂN VIÊN">NHÂN VIÊN</option>
-                    <option value="QUẢN LÝ">QUẢN LÝ</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 uppercase mb-1">
-                    Quyền Hạn (Role)
-                  </label>
-                  <select
-                    value={newRole}
-                    onChange={(e) => setNewRole(e.target.value as any)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="User">User (Nhân viên)</option>
-                    <option value="Manager">Manager (Quản lý)</option>
-                    <option value="Admin">Admin (Quản trị)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 uppercase mb-1">
-                  Mật Khẩu Mặc Định
-                </label>
-                <input
-                  type="text"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              <div className="pt-3 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddEmpModal(false)}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-colors"
-                >
-                  Đóng
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-colors shadow-md shadow-emerald-600/20"
-                >
-                  Lưu Nhân Viên
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
