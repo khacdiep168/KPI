@@ -69,6 +69,10 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
       console.warn("Lỗi kết nối API login, kiểm tra fallback:", netErr);
       const user = findUserByInput(trimmedManv);
       if (user) {
+        if (user.status === "INACTIVE") {
+          setErrorMsg("Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động. Vui lòng liên hệ Quản trị viên.");
+          return;
+        }
         setCurrentUser(user);
         onLoginSuccess(user);
       } else {

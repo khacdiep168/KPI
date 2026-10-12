@@ -45,18 +45,24 @@ export async function POST(req: NextRequest) {
     // 2. Fallback to seed users if RPC did not match (offline or unmigrated user)
     if (!matchedUser) {
       let userProfile: any = null;
+      let dbReachable = false;
       try {
-        const { data: dbUser } = await supabase
+        const { data: dbUser, error: dbErr } = await supabase
           .from("users")
-          .select("manv, name, dept, title, role")
+          .select("manv, name, dept, title, role, status")
           .eq("manv", manv)
           .maybeSingle();
-        if (dbUser) userProfile = dbUser;
+        if (!dbErr) {
+          dbReachable = true;
+          if (dbUser) userProfile = dbUser;
+        }
       } catch (e) {
         // Ignore db query failure
       }
 
-      if (!userProfile) {
+      // If database is reachable but user was not found, the user does not exist (or was deleted).
+      // Only fall back to seed users if the database is offline/unreachable.
+      if (!userProfile && !dbReachable) {
         const seed = INITIAL_USERS.find(
           (u) => u.manv.trim().toUpperCase() === manv
         );

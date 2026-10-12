@@ -127,9 +127,80 @@ async function testResetRoute() {
   console.log("✓ PASS: Authorized Admin requester successfully reset password");
 }
 
+// 5. Test User Status Locking, Login Rejection & Restore
+import { setUserStatusInSupabase, deleteUserFromSupabase, pushUserToSupabase } from "../src/lib/supabaseSync";
+
+async function testUserLockAndUnlock() {
+  console.log("\n[Test 5] Testing User Locking and Login Rejection (DTK01)");
+  // 5a. Lock DTK01
+  const lockOk = await setUserStatusInSupabase("DTK01", "INACTIVE");
+  assert.ok(lockOk, "Locking DTK01 should succeed in Supabase");
+
+  // 5b. Attempt login as locked user DTK01
+  const lockedReq = new Request("http://localhost:3000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manv: "DTK01", password: "123" }),
+  });
+  const lockedRes = await loginHandler(lockedReq as any);
+  assert.strictEqual(lockedRes.status, 403, "Locked user login must return 403 Forbidden!");
+  const lockedData = await lockedRes.json();
+  assert.ok(
+    lockedData.error.includes("khóa") || lockedData.error.includes("ngừng hoạt động"),
+    "Error message must specify account is locked"
+  );
+  console.log("✓ PASS: Locked user DTK01 rejected with 403 Forbidden");
+
+  // 5c. Unlock DTK01 back to ACTIVE
+  const unlockOk = await setUserStatusInSupabase("DTK01", "ACTIVE");
+  assert.ok(unlockOk, "Unlocking DTK01 should succeed in Supabase");
+
+  // 5d. Re-attempt login after unlock
+  const activeReq = new Request("http://localhost:3000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manv: "DTK01", password: "123" }),
+  });
+  const activeRes = await loginHandler(activeReq as any);
+  assert.strictEqual(activeRes.status, 200, "Unlocked user should be allowed to log in");
+  console.log("✓ PASS: Unlocked user DTK01 successfully logged in with 200 OK");
+}
+
+// 6. Test User Permanent Deletion
+async function testUserPermanentDelete() {
+  console.log("\n[Test 6] Testing User Permanent Deletion and Login Denial");
+  const testManv = "TEST_TEMP_99";
+  // Create temp user in DB
+  await pushUserToSupabase({
+    manv: testManv,
+    name: "TÀI KHOẢN TẠM",
+    dept: "IT",
+    title: "NHÂN VIÊN",
+    role: "User",
+    password: "123",
+    status: "ACTIVE",
+  });
+
+  // Delete user from DB
+  const deleteOk = await deleteUserFromSupabase(testManv);
+  assert.ok(deleteOk, "Permanent delete of temp user must succeed");
+
+  // Attempt login with deleted user
+  const deletedReq = new Request("http://localhost:3000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manv: testManv, password: "123" }),
+  });
+  const deletedRes = await loginHandler(deletedReq as any);
+  assert.strictEqual(deletedRes.status, 404, "Deleted user must return 404 Not Found");
+  console.log("✓ PASS: Deleted user permanently removed and login denied with 404");
+}
+
 async function run() {
   await testLoginRoute();
   await testResetRoute();
+  await testUserLockAndUnlock();
+  await testUserPermanentDelete();
   console.log("\n ALL SECURE AUTH TESTS PASSED!");
 }
 

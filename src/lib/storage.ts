@@ -8,7 +8,9 @@ import {
   pushEvaluationToSupabase, 
   pushUserToSupabase, 
   pushPeriodToSupabase, 
-  deletePeriodFromSupabase 
+  deletePeriodFromSupabase,
+  deleteUserFromSupabase,
+  setUserStatusInSupabase
 } from "./supabaseSync";
 import { getCompanyConfig } from "./companyConfig";
 import * as XLSX from "xlsx";
@@ -16,6 +18,7 @@ import * as XLSX from "xlsx";
 const STORAGE_KEYS = {
   CURRENT_USER: "tkv_kpi_current_user",
   USERS: "tkv_kpi_users",
+  DELETED_USERS: "tkv_kpi_deleted_users",
   EVALUATIONS: "tkv_kpi_evaluations",
   PERIODS: "tkv_kpi_periods",
 };
@@ -80,38 +83,32 @@ export function getUsers(): User[] {
       storedUsers = JSON.parse(data);
     }
 
-    // Self-healing merge: Always ensure all INITIAL_USERS exist and have updated roles & passwords
-    const userMap = new Map<string, User>();
-    INITIAL_USERS.forEach((u) => {
-      userMap.set(u.manv.trim().toUpperCase(), {
-        ...u,
-        manv: u.manv.trim().toUpperCase(),
-      });
-    });
+    // Check deleted users set
+    const deletedRaw = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
 
-    // Merge in storedUsers from localStorage
-    storedUsers.forEach((u) => {
-      const key = u.manv.trim().toUpperCase();
-      if (userMap.has(key)) {
-        const existing = userMap.get(key)!;
-        userMap.set(key, {
-          ...existing,
+    let activeUsers: User[] = [];
+    if (storedUsers && storedUsers.length > 0) {
+      // Use existing stored users, strictly filtering out any deleted users
+      activeUsers = storedUsers.filter((u) => !deletedSet.has(u.manv.trim().toUpperCase()));
+    } else {
+      // First boot fallback: populate from INITIAL_USERS (excluding deleted)
+      activeUsers = INITIAL_USERS
+        .filter((u) => !deletedSet.has(u.manv.trim().toUpperCase()))
+        .map(({ password, ...u }) => ({
           ...u,
-        });
-      } else {
-        userMap.set(key, u);
-      }
-    });
+          manv: u.manv.trim().toUpperCase(),
+          status: u.status || "ACTIVE",
+        } as User));
+      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(activeUsers));
+    }
 
     // BẢO MẬT: Tuyệt đối KHÔNG lưu trữ hoặc trả về trường password ở phía Client
-    const sanitized = Array.from(userMap.values()).map((u) => {
+    return activeUsers.map((u) => {
       const copy = { ...u };
       delete (copy as any).password;
       return copy;
     });
-
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(sanitized));
-    return sanitized;
   } catch {
     return INITIAL_USERS.map((u) => {
       const copy = { ...u };
@@ -325,9 +322,21 @@ export function deleteUser(manv: string): boolean {
   if (filtered.length === users.length) return false;
 
   if (typeof window !== "undefined") {
+    const deletedRaw = localStorage.getItem(STORAGE_KEYS.DELETED_USERS);
+    const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+    deletedSet.add(raw);
+    localStorage.setItem(STORAGE_KEYS.DELETED_USERS, JSON.stringify(Array.from(deletedSet)));
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(filtered));
   }
+  deleteUserFromSupabase(raw).catch(console.error);
   return true;
+}
+
+export async function deleteUserAsync(manv: string): Promise<boolean> {
+  const ok = deleteUser(manv);
+  const raw = manv.trim().toUpperCase();
+  await deleteUserFromSupabase(raw);
+  return ok;
 }
 
 export function resetUserPasswordToDefault(manv: string): boolean {
@@ -339,8 +348,18 @@ export function toggleUserStatus(manv: string): User | null {
   const raw = manv.trim().toUpperCase();
   const user = users.find((u) => u.manv.trim().toUpperCase() === raw);
   if (!user) return null;
-  const newStatus = user.status === "INACTIVE" ? "ACTIVE" : "INACTIVE";
-  return updateUser(manv, { status: newStatus });
+  const newStatus: "ACTIVE" | "INACTIVE" = user.status === "INACTIVE" ? "ACTIVE" : "INACTIVE";
+  const updated = updateUser(manv, { status: newStatus });
+  setUserStatusInSupabase(raw, newStatus).catch(console.error);
+  return updated;
+}
+
+export async function toggleUserStatusAsync(manv: string): Promise<User | null> {
+  const updated = toggleUserStatus(manv);
+  if (updated) {
+    await setUserStatusInSupabase(updated.manv, updated.status || "ACTIVE");
+  }
+  return updated;
 }
 
 export function importUsers(importedList: Partial<User>[]): { added: number; updated: number; total: number } {

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { User, EvaluationRecord } from "@/types";
-import { getCurrentUser, canUserAccessTab } from "@/lib/storage";
+import { getCurrentUser, canUserAccessTab, logout, getUsers } from "@/lib/storage";
 import { syncFromSupabase } from "@/lib/supabaseSync";
 import Navbar from "@/components/Navbar";
 import EvaluationForm from "@/components/EvaluationForm";
@@ -24,10 +24,36 @@ export default function HomePage() {
     setIsMounted(true);
     const user = getCurrentUser();
     if (user) {
-      setCurrentUser(user);
+      if (user.status === "INACTIVE") {
+        logout();
+        setCurrentUser(null);
+      } else {
+        setCurrentUser(user);
+      }
     }
-    // Sync with Supabase in background
-    syncFromSupabase().catch(console.error);
+    // Sync with Supabase in background and re-verify current user status
+    syncFromSupabase().then(() => {
+      const refreshed = getCurrentUser();
+      if (refreshed) {
+        if (refreshed.status === "INACTIVE") {
+          logout();
+          setCurrentUser(null);
+          alert("Tài khoản của bạn đã bị khóa bởi Quản trị viên.");
+          return;
+        }
+        const userList = getUsers();
+        const stillExists = userList.some(
+          (u) => u.manv.trim().toUpperCase() === refreshed.manv.trim().toUpperCase()
+        );
+        if (!stillExists) {
+          logout();
+          setCurrentUser(null);
+          alert("Tài khoản của bạn đã bị xóa khỏi hệ thống.");
+          return;
+        }
+        setCurrentUser(refreshed);
+      }
+    }).catch(console.error);
   }, []);
 
   // Listen to hash changes with strict RBAC Guard

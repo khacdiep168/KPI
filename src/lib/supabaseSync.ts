@@ -11,17 +11,22 @@ export async function syncFromSupabase(): Promise<{
     // 1. Fetch Users (Chỉ lấy thông tin danh bạ công khai, KHÔNG bao giờ tải mật khẩu về client)
     const { data: usersData, error: usersErr } = await supabase
       .from("users")
-      .select("manv, name, dept, title, role, created_at");
+      .select("manv, name, dept, title, role, status, created_at");
 
     if (!usersErr && usersData && usersData.length > 0) {
-      const mappedUsers: User[] = usersData.map((u: any) => ({
-        manv: u.manv,
-        name: u.name,
-        dept: u.dept,
-        title: u.title || "NHÂN VIÊN",
-        role: u.role || "User",
-        status: "ACTIVE",
-      }));
+      const deletedRaw = typeof window !== "undefined" ? localStorage.getItem("tkv_kpi_deleted_users") : null;
+      const deletedSet = new Set<string>(deletedRaw ? JSON.parse(deletedRaw) : []);
+
+      const mappedUsers: User[] = usersData
+        .filter((u: any) => !deletedSet.has(u.manv.trim().toUpperCase()))
+        .map((u: any) => ({
+          manv: u.manv,
+          name: u.name,
+          dept: u.dept,
+          title: u.title || "NHÂN VIÊN",
+          role: u.role || "User",
+          status: (u.status as any) || "ACTIVE",
+        }));
       if (typeof window !== "undefined") {
         localStorage.setItem("tkv_kpi_users", JSON.stringify(mappedUsers));
       }
@@ -197,21 +202,61 @@ export async function pushEvaluationToSupabase(e: EvaluationRecord): Promise<voi
   }
 }
 
-export async function pushUserToSupabase(u: User): Promise<void> {
+export async function pushUserToSupabase(u: User): Promise<boolean> {
   try {
-    const payload: any = {
-      manv: u.manv,
-      name: u.name,
-      dept: u.dept,
-      title: u.title,
-      role: u.role,
-    };
-    if (u.password && u.password.trim()) {
-      payload.password = u.password.trim();
+    const { data, error } = await supabase.rpc("admin_upsert_user", {
+      p_manv: u.manv.trim().toUpperCase(),
+      p_name: u.name.trim(),
+      p_dept: u.dept.trim(),
+      p_title: u.title?.trim() || "NHÂN VIÊN",
+      p_role: u.role || "User",
+      p_status: u.status || "ACTIVE",
+      p_password: u.password?.trim() || null,
+    });
+    if (error) {
+      console.error("Failed to push user to Supabase via RPC:", error);
+      return false;
     }
-    await supabase.from("users").upsert(payload);
+    return Boolean(data);
   } catch (err) {
     console.error("Failed to push user to Supabase:", err);
+    return false;
+  }
+}
+
+export async function deleteUserFromSupabase(manv: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("admin_delete_user", {
+      p_target_manv: manv.trim().toUpperCase(),
+    });
+    if (error) {
+      console.error("Supabase admin_delete_user error:", error);
+      return false;
+    }
+    return Boolean(data);
+  } catch (err) {
+    console.error("Failed to delete user from Supabase:", err);
+    return false;
+  }
+}
+
+export async function setUserStatusInSupabase(
+  manv: string,
+  status: "ACTIVE" | "INACTIVE"
+): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("admin_set_user_status", {
+      p_target_manv: manv.trim().toUpperCase(),
+      p_status: status,
+    });
+    if (error) {
+      console.error("Supabase admin_set_user_status error:", error);
+      return false;
+    }
+    return Boolean(data);
+  } catch (err) {
+    console.error("Failed to set user status in Supabase:", err);
+    return false;
   }
 }
 
