@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { User } from "@/types";
-import { logout } from "@/lib/storage";
+import { logout, canUserAccessTab, canUserAddEmployees } from "@/lib/storage";
 import { getCompanyConfig, CompanyConfig } from "@/lib/companyConfig";
 import { 
   Building2, 
@@ -71,8 +71,8 @@ export default function Navbar({
   };
 
   const isAdmin = currentUser.role === "Admin";
-  const isManager = currentUser.role === "Manager" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"));
-  const canAddEmployee = isAdmin || isManager || (currentUser.dept && currentUser.dept.toUpperCase().includes("HÀNH CHÍNH"));
+  const isManager = canUserAccessTab("manager", currentUser);
+  const canAddEmployee = canUserAddEmployees(currentUser);
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -158,7 +158,7 @@ export default function Navbar({
               Lịch Sử Cá Nhân
             </button>
 
-            {(currentUser.role === "Manager" || currentUser.role === "Admin" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"))) && (
+            {isManager && (
               <button
                 onClick={() => onTabChange("manager")}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -514,7 +514,7 @@ export default function Navbar({
           </button>
 
           {/* 4. Duyệt Bộ Phận (chỉ Quản lý / Admin) */}
-          {(currentUser.role === "Manager" || currentUser.role === "Admin" || (currentUser.title && currentUser.title.toUpperCase().includes("QUẢN LÝ"))) && (
+          {isManager && (
             <button
               onClick={() => onTabChange("manager")}
               className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${
@@ -535,7 +535,7 @@ export default function Navbar({
           )}
 
           {/* 5. Hội Đồng & Quản Trị (chỉ Admin) */}
-          {currentUser.role === "Admin" && (
+          {isAdmin && (
             <button
               onClick={() => onTabChange("admin")}
               className={`flex flex-col items-center justify-center py-1 px-2 rounded-2xl transition-all duration-200 active:scale-95 ${

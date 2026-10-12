@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { User, EvaluationRecord } from "@/types";
-import { getCurrentUser } from "@/lib/storage";
+import { getCurrentUser, canUserAccessTab } from "@/lib/storage";
 import { syncFromSupabase } from "@/lib/supabaseSync";
 import Navbar from "@/components/Navbar";
 import EvaluationForm from "@/components/EvaluationForm";
@@ -11,6 +11,7 @@ import ManagerReview from "@/components/ManagerReview";
 import AdminDashboard from "@/components/AdminDashboard";
 import AnnualReport from "@/components/AnnualReport";
 import LoginForm from "@/components/LoginForm";
+import { ShieldAlert } from "lucide-react";
 
 export default function HomePage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -29,17 +30,31 @@ export default function HomePage() {
     syncFromSupabase().catch(console.error);
   }, []);
 
-  // Listen to hash changes if user navigated via modal buttons
+  // Listen to hash changes with strict RBAC Guard
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace("#", "");
-      if (hash === "history" || hash === "evaluate" || hash === "manager" || hash === "admin" || hash === "annual-report") {
-        setActiveTab(hash as any);
+      const validTabs = ["history", "evaluate", "manager", "admin", "annual-report"];
+      if (validTabs.includes(hash)) {
+        if (canUserAccessTab(hash, currentUser)) {
+          setActiveTab(hash as any);
+        } else {
+          setActiveTab("evaluate");
+          window.location.hash = "evaluate";
+        }
       }
     };
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
+  }, [currentUser]);
+
+  // Ensure current active tab is strictly allowed for currentUser
+  useEffect(() => {
+    if (currentUser && !canUserAccessTab(activeTab, currentUser)) {
+      setActiveTab("evaluate");
+      window.location.hash = "evaluate";
+    }
+  }, [currentUser, activeTab]);
 
   if (!isMounted) {
     return (
@@ -64,6 +79,11 @@ export default function HomePage() {
         currentUser={currentUser}
         activeTab={activeTab}
         onTabChange={(tab) => {
+          if (!canUserAccessTab(tab, currentUser)) {
+            setActiveTab("evaluate");
+            window.location.hash = "evaluate";
+            return;
+          }
           setActiveTab(tab);
           if (tab !== "evaluate") {
             setSelectedEditTarget(undefined);
@@ -105,11 +125,27 @@ export default function HomePage() {
         )}
 
         {activeTab === "manager" && (
-          <ManagerReview currentUser={currentUser} />
+          canUserAccessTab("manager", currentUser) ? (
+            <ManagerReview currentUser={currentUser} />
+          ) : (
+            <div className="p-8 text-center bg-white rounded-3xl border border-rose-100 shadow-sm max-w-xl mx-auto my-12">
+              <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-900">Không có quyền truy cập</h3>
+              <p className="text-xs text-slate-500 mt-1">Trang Duyệt Bộ Phận chỉ dành cho Cấp Quản Lý hoặc Ban Giám Đốc.</p>
+            </div>
+          )
         )}
 
         {activeTab === "admin" && (
-          <AdminDashboard currentUser={currentUser} />
+          canUserAccessTab("admin", currentUser) ? (
+            <AdminDashboard currentUser={currentUser} />
+          ) : (
+            <div className="p-8 text-center bg-white rounded-3xl border border-rose-100 shadow-sm max-w-xl mx-auto my-12">
+              <ShieldAlert className="w-12 h-12 text-rose-500 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-900">Không có quyền truy cập</h3>
+              <p className="text-xs text-slate-500 mt-1">Trang Quản Trị & Hội Đồng chỉ dành riêng cho Ban Giám Đốc (Admin).</p>
+            </div>
+          )
         )}
 
         {activeTab === "annual-report" && (

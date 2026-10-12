@@ -383,42 +383,75 @@ export function importUsers(importedList: Partial<User>[]): { added: number; upd
 }
 
 export function canUserManageAll(user: User): boolean {
+  if (!user) return false;
   if (user.role === "Admin") return true;
   const deptNorm = (user.dept || "").toUpperCase();
   const manvNorm = (user.manv || "").toUpperCase();
   const titleNorm = (user.title || "").toUpperCase();
+  const isManager = user.role === "Manager" || isManagerTitleOrRole(user);
 
   // Ban Giám Đốc
   if (deptNorm.includes("BAN GIÁM ĐỐC") || deptNorm.includes("BGD") || manvNorm === "BGD01" || titleNorm.includes("GIÁM ĐỐC")) {
     return true;
   }
   // Quản lý Hành chánh thì thấy toàn bộ
-  if (deptNorm.includes("HÀNH CH") || manvNorm.includes("HC")) {
+  if ((deptNorm.includes("HÀNH CH") && isManager) || manvNorm.includes("HC")) {
     return true;
   }
   // Quản lý IT thì thấy toàn nhân viên
-  if (deptNorm.includes("IT") || manvNorm === "TKV09") {
+  if ((deptNorm.includes("IT") && isManager) || manvNorm === "TKV09") {
     return true;
   }
   return false;
 }
 
 export function canUserAddEmployees(user: User): boolean {
+  if (!user) return false;
   if (user.role === "Admin") return true;
   const deptNorm = (user.dept || "").toUpperCase();
   const manvNorm = (user.manv || "").toUpperCase();
   // Quản lý Hành chánh có quyền thêm nhân viên
   if (
     (deptNorm.includes("HÀNH CH") || manvNorm.includes("HC")) && 
-    (user.role === "Manager" || user.title?.toUpperCase().includes("QUẢN LÝ"))
+    (user.role === "Manager" || isManagerTitleOrRole(user))
   ) {
     return true;
   }
   return false;
 }
 
+export function canUserAccessTab(tab: string, user: User | null): boolean {
+  if (!user) return false;
+  if (tab === "admin") {
+    return user.role === "Admin";
+  }
+  if (tab === "manager") {
+    return (
+      user.role === "Admin" ||
+      user.role === "Manager" ||
+      isManagerTitleOrRole(user) ||
+      canUserManageAll(user)
+    );
+  }
+  if (tab === "evaluate" || tab === "history" || tab === "annual-report") {
+    return true;
+  }
+  return false;
+}
+
 export function getManagedDepartments(user: User): string[] | "ALL" {
+  if (!user) return [];
   if (canUserManageAll(user)) return "ALL";
+
+  // Nhân viên bình thường KHÔNG có quyền quản lý phòng ban nào
+  const isManager = 
+    user.role === "Manager" || 
+    user.role === "Admin" || 
+    isManagerTitleOrRole(user);
+
+  if (!isManager) {
+    return [];
+  }
 
   const deptNorm = (user.dept || "").toUpperCase();
   const manvNorm = (user.manv || "").toUpperCase();
