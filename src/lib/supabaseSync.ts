@@ -11,7 +11,7 @@ export async function syncFromSupabase(): Promise<{
     // 1. Fetch Users (Chỉ lấy thông tin danh bạ công khai, KHÔNG bao giờ tải mật khẩu về client)
     const { data: usersData, error: usersErr } = await supabase
       .from("users")
-      .select("manv, name, dept, title, role, status, created_at");
+      .select("manv, name, dept, title, role, created_at");
 
     if (!usersErr && usersData && usersData.length > 0) {
       const mappedUsers: User[] = usersData.map((u: any) => ({
@@ -20,7 +20,7 @@ export async function syncFromSupabase(): Promise<{
         dept: u.dept,
         title: u.title || "NHÂN VIÊN",
         role: u.role || "User",
-        status: u.status || "ACTIVE",
+        status: "ACTIVE",
       }));
       if (typeof window !== "undefined") {
         localStorage.setItem("tkv_kpi_users", JSON.stringify(mappedUsers));
@@ -199,14 +199,17 @@ export async function pushEvaluationToSupabase(e: EvaluationRecord): Promise<voi
 
 export async function pushUserToSupabase(u: User): Promise<void> {
   try {
-    await supabase.from("users").upsert({
+    const payload: any = {
       manv: u.manv,
       name: u.name,
       dept: u.dept,
       title: u.title,
-      password: u.password,
       role: u.role,
-    });
+    };
+    if (u.password && u.password.trim()) {
+      payload.password = u.password.trim();
+    }
+    await supabase.from("users").upsert(payload);
   } catch (err) {
     console.error("Failed to push user to Supabase:", err);
   }

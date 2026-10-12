@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "npx tsx --env-file=.env.local tests/rbac-security.test.ts && npx tsx --env-file=.env.local tests/secure-auth.test.ts"
+    "test": "npx tsx --env-file=.env.local tests/rbac-security.test.ts && npx tsx --env-file=.env.local tests/secure-auth.test.ts && npx tsx tests/storage-quota.test.ts && npx tsx --env-file=.env.local tests/supabase-security.test.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

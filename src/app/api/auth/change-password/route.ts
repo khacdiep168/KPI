@@ -38,73 +38,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Fetch current password from Supabase
-    let matchedUser: any = null;
-    let savedPass = "";
-
+    // 1. Attempt to change password via secure RPC
+    let changedViaRpc = false;
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("manv, name, dept, title, role, password")
-        .eq("manv", manv)
-        .maybeSingle();
+      const { data: rpcSuccess, error: rpcErr } = await supabase.rpc(
+        "change_user_password",
+        {
+          p_manv: manv,
+          p_old_pass: oldPassword,
+          p_new_pass: newPassword,
+        }
+      );
 
-      if (!error && data) {
-        matchedUser = data;
-        savedPass = (data.password || "").trim();
+      if (!rpcErr && rpcSuccess === true) {
+        changedViaRpc = true;
       }
-    } catch (dbErr) {
-      console.warn("Supabase check error:", dbErr);
+    } catch (e) {
+      console.warn("RPC change password error:", e);
     }
 
-    // Fallback to seed user if not in Supabase yet
-    if (!matchedUser) {
+    if (!changedViaRpc) {
+      // Fallback check for seed user if not initialized in Supabase yet
       const seed = INITIAL_USERS.find(
         (u) => u.manv.trim().toUpperCase() === manv
       );
-      if (seed) {
-        matchedUser = seed;
-        savedPass = (INITIAL_USER_PASSWORDS[manv] || "123").trim();
+      const expectedFallbackPass = (INITIAL_USER_PASSWORDS[manv] || "123").trim();
+
+      if (seed && (oldPassword === expectedFallbackPass || oldPassword === "123")) {
+        const { error: upsertErr } = await supabase.from("users").upsert({
+          manv: seed.manv,
+          name: seed.name,
+          dept: seed.dept,
+          title: seed.title,
+          role: seed.role,
+          password: newPassword,
+        });
+
+        if (upsertErr) {
+          console.error("Failed to update password in Supabase fallback:", upsertErr);
+          return NextResponse.json(
+            { error: "Lỗi lưu mật khẩu mới vào cơ sở dữ liệu." },
+            { status: 500 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Mật khẩu hiện tại không chính xác." },
+          { status: 401 }
+        );
       }
-    }
-
-    if (!matchedUser) {
-      return NextResponse.json(
-        { error: "Không tìm thấy thông tin nhân viên." },
-        { status: 404 }
-      );
-    }
-
-    // 2. Validate old password
-    const isOldValid = savedPass
-      ? oldPassword === savedPass
-      : oldPassword === "123" || oldPassword === "123456";
-
-    if (!isOldValid) {
-      return NextResponse.json(
-        { error: "Mật khẩu hiện tại không chính xác." },
-        { status: 401 }
-      );
-    }
-
-    // 3. Update password in Supabase
-    const { error: updateErr } = await supabase
-      .from("users")
-      .upsert({
-        manv: matchedUser.manv,
-        name: matchedUser.name,
-        dept: matchedUser.dept,
-        title: matchedUser.title,
-        role: matchedUser.role,
-        password: newPassword,
-      });
-
-    if (updateErr) {
-      console.error("Failed to update password in Supabase:", updateErr);
-      return NextResponse.json(
-        { error: "Lỗi lưu mật khẩu mới vào cơ sở dữ liệu." },
-        { status: 500 }
-      );
     }
 
     return NextResponse.json({

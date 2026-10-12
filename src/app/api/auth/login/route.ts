@@ -23,41 +23,62 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1. Try querying Supabase
+    // 1. Authenticate via secure RPC function verify_user_credentials
     let matchedUser: any = null;
-    let savedPass = "";
 
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .select("manv, name, dept, title, role, status, password")
-        .eq("manv", manv)
-        .maybeSingle();
+      const { data: rpcUser, error: rpcErr } = await supabase.rpc(
+        "verify_user_credentials",
+        {
+          p_manv: manv,
+          p_password: password,
+        }
+      );
 
-      if (!error && data) {
-        matchedUser = data;
-        savedPass = (data.password || "").trim();
+      if (!rpcErr && rpcUser) {
+        matchedUser = rpcUser;
       }
-    } catch (dbErr) {
-      console.warn("Supabase auth lookup failed, checking seed users:", dbErr);
+    } catch (rpcErr) {
+      console.warn("Supabase RPC auth lookup failed, checking fallback:", rpcErr);
     }
 
-    // 2. Fallback to INITIAL_USERS if not found in Supabase
+    // 2. Fallback to seed users if RPC did not match (offline or unmigrated user)
     if (!matchedUser) {
-      const seed = INITIAL_USERS.find(
-        (u) => u.manv.trim().toUpperCase() === manv
-      );
-      if (seed) {
-        matchedUser = seed;
-        savedPass = (INITIAL_USER_PASSWORDS[manv] || "123").trim();
+      let userProfile: any = null;
+      try {
+        const { data: dbUser } = await supabase
+          .from("users")
+          .select("manv, name, dept, title, role")
+          .eq("manv", manv)
+          .maybeSingle();
+        if (dbUser) userProfile = dbUser;
+      } catch (e) {
+        // Ignore db query failure
       }
-    }
 
-    if (!matchedUser) {
-      return NextResponse.json(
-        { error: `Mã nhân viên "${manv}" không tìm thấy trong hệ thống.` },
-        { status: 404 }
-      );
+      if (!userProfile) {
+        const seed = INITIAL_USERS.find(
+          (u) => u.manv.trim().toUpperCase() === manv
+        );
+        if (seed) userProfile = seed;
+      }
+
+      if (!userProfile) {
+        return NextResponse.json(
+          { error: `Mã nhân viên "${manv}" không tìm thấy trong hệ thống.` },
+          { status: 404 }
+        );
+      }
+
+      const expectedFallbackPass = (INITIAL_USER_PASSWORDS[manv] || "123").trim();
+      if (password === expectedFallbackPass) {
+        matchedUser = userProfile;
+      } else {
+        return NextResponse.json(
+          { error: "Mật khẩu không chính xác. Vui lòng thử lại." },
+          { status: 401 }
+        );
+      }
     }
 
     // Check if account is inactive / locked
@@ -65,18 +86,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Tài khoản của bạn đã bị khóa hoặc ngừng hoạt động. Vui lòng liên hệ Quản trị viên." },
         { status: 403 }
-      );
-    }
-
-    // 3. Verify password
-    const isMatch = savedPass
-      ? password === savedPass
-      : password === "123" || password === "123456";
-
-    if (!isMatch) {
-      return NextResponse.json(
-        { error: "Mật khẩu không chính xác. Vui lòng thử lại." },
-        { status: 401 }
       );
     }
 

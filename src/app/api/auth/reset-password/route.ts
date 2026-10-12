@@ -79,24 +79,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. Reset password to default "123"
-    const { error: resetErr } = await supabase
-      .from("users")
-      .upsert({
-        manv: targetUser.manv,
-        name: targetUser.name,
-        dept: targetUser.dept,
-        title: targetUser.title || "NHÂN VIÊN",
-        role: targetUser.role || "User",
-        password: "123",
-      });
-
-    if (resetErr) {
-      console.error("Failed to reset password in Supabase:", resetErr);
-      return NextResponse.json(
-        { error: "Lỗi cơ sở dữ liệu khi đặt lại mật khẩu." },
-        { status: 500 }
+    // 3. Reset password to default "123" via secure RPC
+    let resetDone = false;
+    try {
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc(
+        "admin_reset_password",
+        {
+          p_target_manv: targetManv,
+        }
       );
+      if (!rpcErr && rpcRes === true) {
+        resetDone = true;
+      }
+    } catch (e) {
+      console.warn("RPC admin_reset_password error:", e);
+    }
+
+    if (!resetDone) {
+      const { error: resetErr } = await supabase
+        .from("users")
+        .upsert({
+          manv: targetUser.manv,
+          name: targetUser.name,
+          dept: targetUser.dept,
+          title: targetUser.title || "NHÂN VIÊN",
+          role: targetUser.role || "User",
+          password: "123",
+        });
+
+      if (resetErr) {
+        console.error("Failed to reset password in Supabase:", resetErr);
+        return NextResponse.json(
+          { error: "Lỗi cơ sở dữ liệu khi đặt lại mật khẩu." },
+          { status: 500 }
+        );
+      }
     }
 
     return NextResponse.json({
