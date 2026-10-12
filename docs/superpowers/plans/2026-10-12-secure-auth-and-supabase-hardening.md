@@ -14,22 +14,22 @@ Transform the client-side plaintext authentication and storage model into a secu
 ## Tasks
 
 ### Task 1: Create Server-Side Auth API Endpoints
-- [ ] Create `src/app/api/auth/login/route.ts` validating credentials server-side and returning sanitized user profile.
-- [ ] Create `src/app/api/auth/change-password/route.ts` verifying old password and persisting new password.
-- [ ] Create `src/app/api/auth/reset-password/route.ts` verifying requester role before resetting passwords to default "123".
+- [x] Create `src/app/api/auth/login/route.ts` validating credentials server-side and returning sanitized user profile.
+- [x] Create `src/app/api/auth/change-password/route.ts` verifying old password and persisting new password.
+- [x] Create `src/app/api/auth/reset-password/route.ts` verifying requester role before resetting passwords to default "123".
 
 ### Task 2: Sanitize Client-Side User Data & Sync
-- [ ] Update `src/lib/supabaseSync.ts` so `syncFromSupabase` queries only `manv, name, dept, title, role, status` and never the `password` field.
-- [ ] Update `src/lib/storage.ts` so `updateUserPassword` and `resetUserPasswordToDefault` call the server API routes.
-- [ ] Sanitize `src/data/users.ts` so client seed lists do not expose company passwords in browser source maps.
+- [x] Update `src/lib/supabaseSync.ts` so `syncFromSupabase` queries only `manv, name, dept, title, role, status` and never the `password` field.
+- [x] Update `src/lib/storage.ts` so `updateUserPassword` and `resetUserPasswordToDefault` call the server API routes.
+- [x] Sanitize `src/data/users.ts` so client seed lists do not expose company passwords in browser source maps.
 
 ### Task 3: Update Login & Password Modals
-- [ ] Update `src/components/LoginForm.tsx` to authenticate against `/api/auth/login` asynchronously with loading indicator and error feedback.
-- [ ] Update `src/components/ChangePasswordModal.tsx` to call `/api/auth/change-password` asynchronously.
-- [ ] Clean hardcoded JWT token string from `src/lib/supabase.ts`.
+- [x] Update `src/components/LoginForm.tsx` to authenticate against `/api/auth/login` asynchronously with loading indicator and error feedback.
+- [x] Update `src/components/ChangePasswordModal.tsx` to call `/api/auth/change-password` asynchronously.
+- [x] Clean hardcoded JWT token string from `src/lib/supabase.ts`.
 
 ### Task 4: Automated Testing & Verification
-- [ ] Create automated test `tests/secure-auth.test.ts` verifying server auth routes, credential validation, and password omission.
-- [ ] Run test suite with `npx tsx tests/secure-auth.test.ts`.
-- [ ] Run `npx tsc --noEmit` and `npm run build`.
-- [ ] Verify in browser via Browser Agent that login, change password, and admin features work seamlessly.
+- [x] Create automated test `tests/secure-auth.test.ts` verifying server auth routes, credential validation, and password omission.
+- [x] Run test suite with `npx tsx tests/secure-auth.test.ts`.
+- [x] Run `npx tsc --noEmit` and `npm run build`.
+- [x] Verify in browser via Browser Agent that login, change password, and admin features work seamlessly.

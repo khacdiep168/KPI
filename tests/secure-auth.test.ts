@@ -29,6 +29,18 @@ for (const user of resetUsers) {
 }
 console.log("✓ PASS: resetUsersStorage() is clean of passwords");
 
+// 2b. Verify that INITIAL_USERS in src/data/users has no passwords in client bundle
+console.log("\n[Test 2b] INITIAL_USERS source contains NO plaintext password");
+import { INITIAL_USERS } from "../src/data/users";
+for (const u of INITIAL_USERS) {
+  assert.strictEqual(
+    u.password,
+    undefined,
+    `Security violation: INITIAL_USERS in src/data/users still contains password for ${u.manv}!`
+  );
+}
+console.log("✓ PASS: INITIAL_USERS has NO plaintext password in client codebase");
+
 // 3. Test Server Auth Login API Route logic directly
 console.log("\n[Test 3] Testing /api/auth/login route handler");
 import { POST as loginHandler } from "../src/app/api/auth/login/route";

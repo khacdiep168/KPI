@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { INITIAL_USERS } from "@/data/users";
+import { INITIAL_USER_PASSWORDS } from "@/server/serverSeeds";
 
 export async function POST(req: NextRequest) {
   try {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
       );
       if (seed) {
         matchedUser = seed;
-        savedPass = (seed.password || "").trim();
+        savedPass = (INITIAL_USER_PASSWORDS[manv] || "123").trim();
       }
     }
 

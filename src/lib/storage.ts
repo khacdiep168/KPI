@@ -911,7 +911,7 @@ export function importSystemBackup(payload: any): { success: boolean; message: s
 
 export function resetAllDataToDefault(): void {
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    resetUsersStorage();
     localStorage.setItem(STORAGE_KEYS.EVALUATIONS, JSON.stringify(INITIAL_EVALUATIONS));
     localStorage.setItem(STORAGE_KEYS.PERIODS, JSON.stringify(INITIAL_PERIODS));
   }
