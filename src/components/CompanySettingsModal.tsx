@@ -9,13 +9,18 @@ import {
   DEFAULT_COMPANY_CONFIG 
 } from "@/lib/companyConfig";
 import { pushCompanyConfigToSupabase } from "@/lib/supabaseSync";
+import { compressImageFile } from "@/lib/imageCompression";
+import { getLocalStorageUsage, formatBytes, StorageUsage } from "@/lib/storageQuota";
 import { 
   Building2, 
   Upload, 
   RotateCcw, 
   Check, 
   X, 
-  Image as ImageIcon 
+  Image as ImageIcon,
+  HardDrive,
+  Loader2,
+  Sparkles
 } from "lucide-react";
 
 interface CompanySettingsModalProps {
@@ -32,6 +37,9 @@ export default function CompanySettingsModal({
   const [mounted, setMounted] = useState(false);
   const [companyForm, setCompanyForm] = useState<CompanyConfig>(DEFAULT_COMPANY_CONFIG);
   const [companySaveSuccess, setCompanySaveSuccess] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [compressionInfo, setCompressionInfo] = useState<string | null>(null);
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -41,6 +49,8 @@ export default function CompanySettingsModal({
     if (isOpen) {
       setCompanyForm(getCompanyConfig());
       setCompanySaveSuccess(false);
+      setCompressionInfo(null);
+      setStorageUsage(getLocalStorageUsage());
     }
   }, [isOpen]);
 
@@ -53,6 +63,7 @@ export default function CompanySettingsModal({
     const updated = saveCompanyConfig(companyForm);
     pushCompanyConfigToSupabase(updated).catch(console.error);
     setCompanySaveSuccess(true);
+    setStorageUsage(getLocalStorageUsage());
     if (onSaved) onSaved(updated);
     setTimeout(() => {
       setCompanySaveSuccess(false);
@@ -63,24 +74,38 @@ export default function CompanySettingsModal({
   const handleResetCompanyDefault = () => {
     if (confirm("Khôi phục thông tin doanh nghiệp về giá trị mặc định của CÔNG TY TNHH TM THẾ KỶ VÀNG?")) {
       setCompanyForm(DEFAULT_COMPANY_CONFIG);
+      setCompressionInfo(null);
     }
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Dung lượng logo không nên vượt quá 2MB!");
-      return;
+
+    setIsCompressing(true);
+    setCompressionInfo(null);
+
+    try {
+      // Tự động thu nhỏ và nén ảnh để tiết kiệm hạn mức LocalStorage
+      const result = await compressImageFile(file, 320, 320, 0.85);
+      setCompanyForm((prev) => ({ ...prev, logoUrl: result.dataUrl }));
+      setCompressionInfo(
+        `Đã nén tối ưu: ${formatBytes(result.originalBytes)} → ${formatBytes(result.compressedBytes)} (Giảm ${result.compressionRatio}%)`
+      );
+      setStorageUsage(getLocalStorageUsage());
+    } catch (err: any) {
+      console.warn("Lỗi nén ảnh, dùng fallback:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const fallbackResult = event.target?.result as string;
+        if (fallbackResult) {
+          setCompanyForm((prev) => ({ ...prev, logoUrl: fallbackResult }));
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target?.result as string;
-      if (result) {
-        setCompanyForm((prev) => ({ ...prev, logoUrl: result }));
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   return createPortal(
@@ -231,11 +256,16 @@ export default function CompanySettingsModal({
               <div className="flex-1 space-y-2 w-full">
                 <div className="flex items-center gap-2">
                   <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors">
-                    <Upload className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Tải ảnh từ máy tính</span>
+                    {isCompressing ? (
+                      <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    )}
+                    <span>{isCompressing ? "Đang nén ảnh..." : "Tải ảnh từ máy tính"}</span>
                     <input
                       type="file"
                       accept="image/*"
+                      disabled={isCompressing}
                       className="hidden"
                       onChange={handleLogoUpload}
                     />
@@ -244,13 +274,23 @@ export default function CompanySettingsModal({
                   {companyForm.logoUrl && (
                     <button
                       type="button"
-                      onClick={() => setCompanyForm({ ...companyForm, logoUrl: "" })}
+                      onClick={() => {
+                        setCompanyForm({ ...companyForm, logoUrl: "" });
+                        setCompressionInfo(null);
+                      }}
                       className="px-2.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-semibold transition-colors"
                     >
                       Xóa logo
                     </button>
                   )}
                 </div>
+
+                {compressionInfo && (
+                  <div className="flex items-center gap-1.5 p-2 rounded-xl bg-emerald-50 text-emerald-800 text-[11px] font-medium border border-emerald-200">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{compressionInfo}</span>
+                  </div>
+                )}
 
                 <input
                   type="url"
@@ -261,6 +301,38 @@ export default function CompanySettingsModal({
                 />
               </div>
             </div>
+
+            {/* Storage Quota Bar */}
+            {storageUsage && (
+              <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-semibold text-slate-700 flex items-center gap-1.5">
+                    <HardDrive className="w-3.5 h-3.5 text-slate-500" />
+                    Bộ nhớ LocalStorage: {storageUsage.usedFormatted} / {storageUsage.maxFormatted}
+                  </span>
+                  <span className={`font-bold ${storageUsage.isNearLimit ? "text-rose-600" : "text-slate-600"}`}>
+                    {storageUsage.percentUsed.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      storageUsage.percentUsed > 80 
+                        ? "bg-rose-500" 
+                        : storageUsage.percentUsed > 50 
+                        ? "bg-amber-500" 
+                        : "bg-blue-600"
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(1, storageUsage.percentUsed))}%` }}
+                  />
+                </div>
+                {storageUsage.isNearLimit && (
+                  <p className="text-[10px] text-rose-600 font-medium">
+                    ⚠️ Bộ nhớ trình duyệt sắp đầy. Vui lòng nén nhỏ logo hoặc xóa bớt dữ liệu cũ.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Action buttons */}

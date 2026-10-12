@@ -1,3 +1,5 @@
+import { safeSetLocalStorage } from "./storageQuota";
+
 export interface CompanyConfig {
   companyName: string;
   parentOrg?: string;
@@ -35,7 +37,10 @@ export function saveCompanyConfig(config: Partial<CompanyConfig>): CompanyConfig
   try {
     const current = getCompanyConfig();
     const updated = { ...current, ...config };
-    localStorage.setItem(STORAGE_KEY_COMPANY, JSON.stringify(updated));
+    const saveRes = safeSetLocalStorage(STORAGE_KEY_COMPANY, JSON.stringify(updated));
+    if (!saveRes.success) {
+      console.warn("Cảnh báo lưu cấu hình:", saveRes.error);
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("company-config-changed", { detail: updated }));
     }
