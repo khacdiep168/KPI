@@ -65,7 +65,7 @@ async function testLoginRoute() {
   const empReq = new Request("http://localhost:3000/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ manv: "TKV11", password: "abc" }),
+    body: JSON.stringify({ manv: "TKV11", password: "123" }),
   });
   const empRes = await loginHandler(empReq as any);
   assert.strictEqual(empRes.status, 200, "Employee login should return 200");
