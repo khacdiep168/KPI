@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { User } from "@/types";
-import { updateUserPassword } from "@/lib/storage";
+import { updateUserPasswordAsync } from "@/lib/storage";
 import { 
   KeyRound, 
   Lock, 
@@ -56,7 +56,7 @@ export default function ChangePasswordModal({
 
   if (!isOpen || !mounted) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
@@ -90,7 +90,7 @@ export default function ChangePasswordModal({
     setIsSubmitting(true);
 
     try {
-      const result = updateUserPassword(targetManv, oldPassword, newPassword);
+      const result = await updateUserPasswordAsync(targetManv, oldPassword, newPassword);
       if (!result.success) {
         setErrorMsg(result.message);
       } else {

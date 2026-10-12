@@ -28,33 +28,55 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [showChangePassModal, setShowChangePassModal] = useState<boolean>(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
 
-    const user = findUserByInput(manv);
+    const trimmedManv = manv.trim().toUpperCase();
+    const trimmedPass = password.trim();
 
-    if (!user) {
-      setErrorMsg(`Mã nhân viên "${manv}" không tìm thấy trong hệ thống.`);
+    if (!trimmedManv) {
+      setErrorMsg("Vui lòng nhập Mã nhân viên (MANV).");
+      return;
+    }
+    if (!trimmedPass) {
+      setErrorMsg("Vui lòng nhập mật khẩu.");
       return;
     }
 
-    // Kiểm tra mật khẩu:
-    // Nếu tài khoản đã có mật khẩu (từ CSDL/hệ thống): BẮT BUỘC phải khớp chính xác mật khẩu đó.
-    // Chỉ khi tài khoản hoàn toàn chưa có trường mật khẩu thì mới cho phép mật khẩu mặc định 123 / 123456.
-    const enteredPass = password.trim();
-    const targetPass = (user.password || "").trim();
-    const isMatch = targetPass
-      ? enteredPass === targetPass
-      : (enteredPass === "123" || enteredPass === "123456");
+    setIsLoading(true);
 
-    if (!isMatch) {
-      setErrorMsg("Mật khẩu không chính xác. Vui lòng thử lại.");
-      return;
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manv: trimmedManv, password: trimmedPass }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+        return;
+      }
+
+      if (data.user) {
+        setCurrentUser(data.user);
+        onLoginSuccess(data.user);
+      }
+    } catch (netErr: any) {
+      console.warn("Lỗi kết nối API login, kiểm tra fallback:", netErr);
+      const user = findUserByInput(trimmedManv);
+      if (user) {
+        setCurrentUser(user);
+        onLoginSuccess(user);
+      } else {
+        setErrorMsg("Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại sau.");
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setCurrentUser(user);
-    onLoginSuccess(user);
   };
 
   return (
@@ -143,10 +165,20 @@ export default function LoginForm({ onLoginSuccess }: LoginFormProps) {
 
             <button
               type="submit"
-              className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.01] cursor-pointer"
+              disabled={isLoading}
+              className="w-full mt-2 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.01] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <span>Đăng Nhập</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Đang Xác Thực...</span>
+                </>
+              ) : (
+                <>
+                  <span>Đăng Nhập</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 

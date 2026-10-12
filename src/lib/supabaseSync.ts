@@ -8,10 +8,10 @@ export async function syncFromSupabase(): Promise<{
   periodsCount: number;
 }> {
   try {
-    // 1. Fetch Users
+    // 1. Fetch Users (Chỉ lấy thông tin danh bạ công khai, KHÔNG bao giờ tải mật khẩu về client)
     const { data: usersData, error: usersErr } = await supabase
       .from("users")
-      .select("*");
+      .select("manv, name, dept, title, role, status, created_at");
 
     if (!usersErr && usersData && usersData.length > 0) {
       const mappedUsers: User[] = usersData.map((u: any) => ({
@@ -19,8 +19,8 @@ export async function syncFromSupabase(): Promise<{
         name: u.name,
         dept: u.dept,
         title: u.title || "NHÂN VIÊN",
-        password: u.password,
         role: u.role || "User",
+        status: u.status || "ACTIVE",
       }));
       if (typeof window !== "undefined") {
         localStorage.setItem("tkv_kpi_users", JSON.stringify(mappedUsers));

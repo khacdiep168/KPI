@@ -8,6 +8,7 @@ import {
   updateUser, 
   deleteUser, 
   resetUserPasswordToDefault, 
+  resetUserPasswordToDefaultAsync,
   toggleUserStatus, 
   getDepartments,
   getManagedDepartments,
@@ -158,10 +159,17 @@ export default function UserManagementModal({
     }
   };
 
-  const handleConfirmResetPassword = () => {
+  const handleConfirmResetPassword = async () => {
     if (!resetConfirmUser) return;
     try {
-      resetUserPasswordToDefault(resetConfirmUser.manv);
+      const res = await resetUserPasswordToDefaultAsync(
+        resetConfirmUser.manv,
+        currentUser.manv
+      );
+      if (!res.success) {
+        showToast("error", res.message);
+        return;
+      }
       loadUsers();
       showToast("success", `Đã đặt lại mật khẩu cho ${resetConfirmUser.name} (${resetConfirmUser.manv}) về "123"!`);
       setResetConfirmUser(null);

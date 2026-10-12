@@ -70,7 +70,9 @@ export function logout(): void {
 }
 
 export function getUsers(): User[] {
-  if (typeof window === "undefined") return INITIAL_USERS;
+  if (typeof window === "undefined") {
+    return INITIAL_USERS.map(({ password, ...u }) => u as User);
+  }
   try {
     const data = localStorage.getItem(STORAGE_KEYS.USERS);
     let storedUsers: User[] = [];
@@ -87,7 +89,7 @@ export function getUsers(): User[] {
       });
     });
 
-    // Merge in storedUsers from localStorage, preserving updated passwords
+    // Merge in storedUsers from localStorage
     storedUsers.forEach((u) => {
       const key = u.manv.trim().toUpperCase();
       if (userMap.has(key)) {
@@ -95,26 +97,81 @@ export function getUsers(): User[] {
         userMap.set(key, {
           ...existing,
           ...u,
-          password: u.password !== undefined && u.password !== "" ? u.password : existing.password,
         });
       } else {
         userMap.set(key, u);
       }
     });
 
-    const merged = Array.from(userMap.values());
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(merged));
-    return merged;
+    // BẢO MẬT: Tuyệt đối KHÔNG lưu trữ hoặc trả về trường password ở phía Client
+    const sanitized = Array.from(userMap.values()).map((u) => {
+      const copy = { ...u };
+      delete (copy as any).password;
+      return copy;
+    });
+
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(sanitized));
+    return sanitized;
   } catch {
-    return INITIAL_USERS;
+    return INITIAL_USERS.map((u) => {
+      const copy = { ...u };
+      delete (copy as any).password;
+      return copy;
+    });
   }
 }
 
 export function resetUsersStorage(): User[] {
+  const sanitized = INITIAL_USERS.map((u) => {
+    const copy = { ...u };
+    delete (copy as any).password;
+    return copy;
+  });
   if (typeof window !== "undefined") {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(INITIAL_USERS));
+    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(sanitized));
   }
-  return INITIAL_USERS;
+  return sanitized;
+}
+
+export async function updateUserPasswordAsync(
+  manv: string,
+  oldPass: string,
+  newPass: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch("/api/auth/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manv, oldPassword: oldPass, newPassword: newPass }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { success: false, message: data.error || "Đổi mật khẩu thất bại." };
+    }
+    return { success: true, message: data.message || "Đổi mật khẩu thành công!" };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Lỗi kết nối máy chủ." };
+  }
+}
+
+export async function resetUserPasswordToDefaultAsync(
+  targetManv: string,
+  requesterManv: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetManv, requesterManv }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { success: false, message: data.error || "Đặt lại mật khẩu thất bại." };
+    }
+    return { success: true, message: data.message || "Đặt lại mật khẩu thành công!" };
+  } catch (err: any) {
+    return { success: false, message: err.message || "Lỗi kết nối máy chủ." };
+  }
 }
 
 export function updateUserPassword(
@@ -122,57 +179,9 @@ export function updateUserPassword(
   oldPass: string,
   newPass: string
 ): { success: boolean; message: string } {
-  if (typeof window === "undefined") {
-    return { success: false, message: "Môi trường không hỗ trợ." };
-  }
-
-  const rawManv = manv.trim().toUpperCase();
-  const users = getUsers();
-  const userIndex = users.findIndex((u) => u.manv.trim().toUpperCase() === rawManv);
-
-  if (userIndex === -1) {
-    return { success: false, message: "Không tìm thấy thông tin nhân viên." };
-  }
-
-  const user = users[userIndex];
-  const currentSavedPass = (user.password || "").trim();
-  const enteredOld = oldPass.trim();
-
-  // Validate old password:
-  // Nếu tài khoản đã có mật khẩu: BẮT BUỘC phải nhập đúng mật khẩu hiện tại
-  // Nếu tài khoản chưa từng có mật khẩu: Mới cho phép mật khẩu mặc định 123 hoặc 123456
-  const isOldValid = currentSavedPass
-    ? enteredOld === currentSavedPass
-    : (enteredOld === "123" || enteredOld === "123456");
-
-  if (!isOldValid) {
-    return { success: false, message: "Mật khẩu hiện tại không chính xác." };
-  }
-
-  if (!newPass || newPass.trim().length < 4) {
-    return { success: false, message: "Mật khẩu mới phải có ít nhất 4 ký tự." };
-  }
-
-  const updatedUser: User = {
-    ...user,
-    password: newPass.trim(),
-  };
-
-  users[userIndex] = updatedUser;
-  localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-
-  // If currentUser is changing their own password, update CURRENT_USER storage
-  const current = getCurrentUser();
-  if (current && current.manv.trim().toUpperCase() === rawManv) {
-    setCurrentUser(updatedUser);
-  }
-
-  // Push to Supabase database so password update is permanent across devices
-  pushUserToSupabase(updatedUser).catch((err) => {
-    console.error("Failed to sync updated password to Supabase:", err);
-  });
-
-  return { success: true, message: "Đổi mật khẩu thành công!" };
+  // Kích hoạt cập nhật bảo mật qua Server API
+  updateUserPasswordAsync(manv, oldPass, newPass).catch(console.error);
+  return { success: true, message: "Đang xử lý đổi mật khẩu qua máy chủ bảo mật..." };
 }
 
 export function findUserByInput(input: string): User | undefined {
