@@ -97,6 +97,33 @@ async function testLoginRoute() {
   const missingRes = await loginHandler(missingReq as any);
   assert.strictEqual(missingRes.status, 404, "Unknown MANV should return 404");
   console.log("✓ PASS: Unknown user rejected with 404 Not Found");
+
+  // 3e. Changed password user should reject old default password '123'
+  const oldPassReq = new Request("http://localhost:3000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manv: "TKV09", password: "123" }),
+  });
+  const oldPassRes = await loginHandler(oldPassReq as any);
+  assert.strictEqual(
+    oldPassRes.status,
+    401,
+    "User with changed password must NOT be allowed to login with default '123' via fallback!"
+  );
+  console.log("✓ PASS: Default password '123' rejected for user with updated password in DB");
+
+  // 3f. Changed password user should successfully log in with new password '168066'
+  const newPassReq = new Request("http://localhost:3000/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ manv: "TKV09", password: "168066" }),
+  });
+  const newPassRes = await loginHandler(newPassReq as any);
+  assert.strictEqual(newPassRes.status, 200, "User must successfully log in with new password '168066'");
+  const newPassData = await newPassRes.json();
+  assert.strictEqual(newPassData.success, true);
+  assert.strictEqual(newPassData.user.manv, "TKV09");
+  console.log("✓ PASS: New password '168066' logged in successfully for TKV09");
 }
 
 // 4. Test Server Reset Password API permissions
@@ -132,7 +159,16 @@ import { setUserStatusInSupabase, deleteUserFromSupabase, pushUserToSupabase } f
 
 async function testUserLockAndUnlock() {
   console.log("\n[Test 5] Testing User Locking and Login Rejection (DTK01)");
-  // 5a. Lock DTK01
+  // 5a. Ensure DTK01 exists in Supabase, then Lock DTK01
+  await pushUserToSupabase({
+    manv: "DTK01",
+    name: "ĐỖ THỊ KIM ANH",
+    dept: "HC-NS",
+    title: "TRƯỞNG PHÒNG",
+    role: "Manager",
+    status: "ACTIVE",
+    password: "123",
+  });
   const lockOk = await setUserStatusInSupabase("DTK01", "INACTIVE");
   assert.ok(lockOk, "Locking DTK01 should succeed in Supabase");
 

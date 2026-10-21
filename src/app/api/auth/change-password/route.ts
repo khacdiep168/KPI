@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Attempt to change password via secure RPC
     let changedViaRpc = false;
+    let rpcExecuted = false;
     try {
       const { data: rpcSuccess, error: rpcErr } = await supabase.rpc(
         "change_user_password",
@@ -50,15 +51,26 @@ export async function POST(req: NextRequest) {
         }
       );
 
-      if (!rpcErr && rpcSuccess === true) {
-        changedViaRpc = true;
+      if (!rpcErr) {
+        rpcExecuted = true;
+        if (rpcSuccess === true) {
+          changedViaRpc = true;
+        }
       }
     } catch (e) {
       console.warn("RPC change password error:", e);
     }
 
     if (!changedViaRpc) {
-      // Fallback check for seed user if not initialized in Supabase yet
+      // If RPC executed on database and returned false, old password was incorrect (or user not found)
+      if (rpcExecuted) {
+        return NextResponse.json(
+          { error: "Mật khẩu hiện tại không chính xác." },
+          { status: 401 }
+        );
+      }
+
+      // Fallback check for seed user ONLY if database/RPC is offline or unmigrated
       const seed = INITIAL_USERS.find(
         (u) => u.manv.trim().toUpperCase() === manv
       );

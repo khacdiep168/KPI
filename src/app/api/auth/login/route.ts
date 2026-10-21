@@ -60,14 +60,29 @@ export async function POST(req: NextRequest) {
         // Ignore db query failure
       }
 
-      // If database is reachable but user was not found, the user does not exist (or was deleted).
-      // Only fall back to seed users if the database is offline/unreachable.
-      if (!userProfile && !dbReachable) {
-        const seed = INITIAL_USERS.find(
-          (u) => u.manv.trim().toUpperCase() === manv
-        );
-        if (seed) userProfile = seed;
+      // If database is reachable:
+      // - If user exists in DB, verify_user_credentials already checked their password and failed.
+      //   Reject immediately with 401!
+      // - If user does not exist in DB, reject with 404!
+      if (dbReachable) {
+        if (userProfile) {
+          return NextResponse.json(
+            { error: "Mật khẩu không chính xác. Vui lòng thử lại." },
+            { status: 401 }
+          );
+        } else {
+          return NextResponse.json(
+            { error: `Mã nhân viên "${manv}" không tìm thấy trong hệ thống.` },
+            { status: 404 }
+          );
+        }
       }
+
+      // ONLY if database is offline/unreachable (!dbReachable), fall back to seed users:
+      const seed = INITIAL_USERS.find(
+        (u) => u.manv.trim().toUpperCase() === manv
+      );
+      if (seed) userProfile = seed;
 
       if (!userProfile) {
         return NextResponse.json(
