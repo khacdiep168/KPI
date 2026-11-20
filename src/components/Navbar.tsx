@@ -25,7 +25,8 @@ import {
   UserPlus,
   Users,
   Calendar,
-  Database
+  Database,
+  RefreshCw
 } from "lucide-react";
 import ChangePasswordModal from "./ChangePasswordModal";
 import CompanySettingsModal from "./CompanySettingsModal";
@@ -33,6 +34,7 @@ import AddEmployeeModal from "./AddEmployeeModal";
 import UserManagementModal from "./UserManagementModal";
 import PeriodManagementModal from "./PeriodManagementModal";
 import BackupRestoreModal from "./BackupRestoreModal";
+import SyncSheetsModal from "./SyncSheetsModal";
 
 interface NavbarProps {
   currentUser: User;
@@ -54,6 +56,7 @@ export default function Navbar({
   const [showUserManageModal, setShowUserManageModal] = useState(false);
   const [showPeriodModal, setShowPeriodModal] = useState(false);
   const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [companyConfig, setCompanyConfig] = useState<CompanyConfig>(getCompanyConfig());
 
   useEffect(() => {
@@ -400,6 +403,29 @@ export default function Navbar({
                 </button>
               )}
 
+              {/* 5.1 Nút Đồng Bộ Dữ Liệu Google Sheets (Dành cho Admin) */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowProfileSheet(false);
+                    setShowSyncModal(true);
+                  }}
+                  className="w-full p-3 sm:p-3.5 rounded-2xl bg-teal-50 hover:bg-teal-100/80 border border-teal-200 text-teal-950 font-bold text-sm flex items-center justify-between transition-all cursor-pointer active:scale-[0.98]"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-md shadow-teal-500/25 shrink-0">
+                      <RefreshCw className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-extrabold text-teal-950 text-sm">Đồng Bộ Google Sheets</p>
+                      <p className="text-xs text-teal-700/80 font-normal mt-0.5">Quét & nạp đánh giá mới từ biểu mẫu nhân viên & quản lý</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-teal-500 shrink-0" />
+                </button>
+              )}
+
               {/* 6. Nút Đổi mật khẩu cá nhân */}
               <button
                 type="button"
@@ -605,6 +631,17 @@ export default function Navbar({
       <BackupRestoreModal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
+      />
+
+      {/* Sync Google Sheets Modal */}
+      <SyncSheetsModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        currentUser={currentUser}
+        onSyncSuccess={() => {
+          // Trigger event or callback
+          window.dispatchEvent(new Event("kpi-data-synced"));
+        }}
       />
     </header>
   );
